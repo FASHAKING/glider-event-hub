@@ -22,6 +22,23 @@ project.
 - [Vite](https://vitejs.dev/) + [React 18](https://react.dev/) + TypeScript
 - [Tailwind CSS](https://tailwindcss.com/)
 - Vanilla React state + `localStorage` persistence
+- **Typography:** Space Grotesk (display) + Inter (body) via Google Fonts
+- **Icons:** hand-built SVG icon set (no icon library dependency)
+
+## Brand Palette
+
+| Role | Name | Hex |
+| --- | --- | --- |
+| Primary accent | Olive Green | `#4F7F58` |
+| Soft accent | Mint Green | `#A8E0D1` |
+| Secondary accent | Light Blue | `#A3C8E0` |
+| Text | Black | `#000000` |
+| Background | Light Gray | `#F5F5F7` |
+| Muted text | Dark Gray | `#626262` |
+
+All colors are exposed as Tailwind utilities: `bg-glide-mint`, `text-glide-olive`,
+`border-glide-sky`, `bg-glide-light`, `text-glide-gray`, etc. See
+[`tailwind.config.js`](tailwind.config.js).
 
 ## Getting Started
 
@@ -89,6 +106,31 @@ interface GlideEvent {
   tags?: string[]
 }
 ```
+
+## Deploying to Vercel
+
+This repo ships with a [`vercel.json`](vercel.json) pre-configured for Vite +
+SPA fallback, so deployment is one-click.
+
+**Dashboard (recommended):**
+1. Go to https://vercel.com/new
+2. Import the `fashaking/glider-event-hub` repository
+3. Vercel auto-detects the **Vite** preset — keep the defaults:
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Install Command: `npm install`
+4. Click **Deploy**. You'll get a `https://<project>.vercel.app` URL within
+   about a minute.
+
+**CLI:**
+```bash
+npm i -g vercel
+vercel           # link and deploy a preview
+vercel --prod    # deploy to production
+```
+
+Every push to the connected branch will trigger an automatic preview build on
+Vercel.
 
 ## Roadmap Ideas
 

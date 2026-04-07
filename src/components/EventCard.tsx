@@ -1,9 +1,17 @@
 import type { GlideEvent, EventStatus } from '../types'
+import {
+  CalendarIcon,
+  UserIcon,
+  PinIcon,
+  ExternalIcon,
+  LiveDotIcon,
+  CategoryIcon,
+} from './Icons'
 
 const statusStyles: Record<EventStatus, string> = {
-  live: 'border-red-500/40 bg-red-500/10 text-red-300',
-  upcoming: 'border-glide-accent/40 bg-glide-accent/10 text-glide-accent',
-  past: 'border-white/10 bg-white/5 text-white/60',
+  live: 'border-red-200 bg-red-50 text-red-600',
+  upcoming: 'border-glide-mint bg-glide-mint/40 text-glide-olive',
+  past: 'border-glide-border bg-glide-light text-glide-gray',
 }
 
 const statusLabel: Record<EventStatus, string> = {
@@ -40,40 +48,44 @@ export default function EventCard({
   event: GlideEvent
   status: EventStatus
 }) {
+  const CatIcon = CategoryIcon[event.category]
   return (
-    <article className="card p-5 flex flex-col gap-4 hover:border-glide-accent/40 transition-colors">
+    <article className="card p-5 flex flex-col gap-4 hover:border-glide-olive/40 hover:shadow-card transition-all duration-200">
       <div className="flex items-start justify-between gap-3">
         <span className={`chip ${statusStyles[status]}`}>
           {status === 'live' && (
-            <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" />
+            <LiveDotIcon width={10} height={10} className="animate-pulse" />
           )}
           {statusLabel[status]}
         </span>
-        <span className="chip border-glide-border bg-white/5 text-white/70">
+        <span className="chip border-glide-border bg-glide-light text-glide-gray">
+          <CatIcon width={13} height={13} />
           {event.category}
         </span>
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold leading-tight">{event.title}</h3>
-        <p className="mt-1.5 text-sm text-white/60 line-clamp-3">
+        <h3 className="font-display text-lg font-semibold leading-tight text-glide-black">
+          {event.title}
+        </h3>
+        <p className="mt-1.5 text-sm text-glide-gray line-clamp-3">
           {event.description}
         </p>
       </div>
 
-      <div className="text-sm text-white/70 space-y-1">
+      <div className="text-sm text-glide-gray space-y-1.5">
         <div className="flex items-center gap-2">
-          <span className="text-white/40">When</span>
-          <span>{formatDate(event.startsAt)}</span>
-          <span className="text-white/40">· {relative(event.startsAt)}</span>
+          <CalendarIcon width={14} height={14} className="text-glide-olive" />
+          <span className="text-glide-black">{formatDate(event.startsAt)}</span>
+          <span className="text-glide-gray/80">· {relative(event.startsAt)}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-white/40">Host</span>
+          <UserIcon width={14} height={14} className="text-glide-olive" />
           <span>{event.host}</span>
         </div>
         {event.location && (
           <div className="flex items-center gap-2">
-            <span className="text-white/40">Where</span>
+            <PinIcon width={14} height={14} className="text-glide-olive" />
             <span>{event.location}</span>
           </div>
         )}
@@ -84,7 +96,7 @@ export default function EventCard({
           {event.tags.map((t) => (
             <span
               key={t}
-              className="text-[11px] px-2 py-0.5 rounded-full bg-white/5 border border-glide-border text-white/60"
+              className="text-[11px] px-2 py-0.5 rounded-full bg-glide-sky/25 border border-glide-sky/60 text-[#2b5d82]"
             >
               #{t}
             </span>
@@ -97,7 +109,7 @@ export default function EventCard({
         target="_blank"
         rel="noreferrer"
         className={`mt-auto ${
-          status === 'past' ? 'btn-ghost' : 'btn-primary'
+          status === 'past' ? 'btn-ghost' : status === 'live' ? 'btn-primary' : 'btn-soft'
         } text-sm`}
       >
         {status === 'live'
@@ -105,6 +117,7 @@ export default function EventCard({
           : status === 'upcoming'
             ? 'Set Reminder'
             : 'View Recap'}
+        <ExternalIcon width={14} height={14} />
       </a>
     </article>
   )

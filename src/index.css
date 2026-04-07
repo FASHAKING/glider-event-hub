@@ -10,25 +10,39 @@ body,
 
 body {
   background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(139, 92, 246, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 90% 0%, rgba(94, 234, 212, 0.15), transparent 60%),
-    #070b14;
+    radial-gradient(1100px 520px at 8% -10%, rgba(168, 224, 209, 0.55), transparent 60%),
+    radial-gradient(900px 460px at 92% -10%, rgba(163, 200, 224, 0.45), transparent 60%),
+    #F5F5F7;
+  color: #000000;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 @layer components {
   .card {
-    @apply bg-glide-panel/80 backdrop-blur border border-glide-border rounded-2xl;
+    @apply bg-glide-panel border border-glide-border rounded-2xl shadow-soft;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200;
   }
   .btn-primary {
-    @apply btn bg-glide-accent text-glide-bg hover:bg-glide-accent/90;
+    @apply btn bg-glide-olive text-white hover:bg-glide-olive/90 shadow-sm hover:shadow-glow;
+  }
+  .btn-soft {
+    @apply btn bg-glide-mint text-glide-olive hover:bg-glide-mint/80;
   }
   .btn-ghost {
-    @apply btn border border-glide-border text-white/90 hover:bg-white/5;
+    @apply btn bg-white border border-glide-border text-glide-text hover:border-glide-olive/40 hover:bg-glide-light;
   }
   .chip {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border;
+  }
+  .input {
+    @apply w-full bg-white border border-glide-border rounded-xl px-3.5 py-2.5 text-sm text-glide-text placeholder:text-glide-muted/70 outline-none focus:border-glide-olive focus:ring-2 focus:ring-glide-mint/50 transition;
   }
 }

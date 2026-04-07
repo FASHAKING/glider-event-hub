@@ -55,32 +55,34 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-glide-black/30 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        className="card w-full max-w-lg p-6 space-y-4"
+        className="card w-full max-w-lg p-6 space-y-5 shadow-card"
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold">Submit an Event</h2>
-            <p className="text-sm text-white/60">
-              Share a Glide community event. Stored locally for now.
+            <h2 className="font-display text-2xl font-bold text-glide-black">
+              Submit an Event
+            </h2>
+            <p className="text-sm text-glide-gray mt-0.5">
+              Share a Glide community event with the hub.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-white/60 hover:text-white text-2xl leading-none"
+            className="text-glide-gray hover:text-glide-black text-2xl leading-none w-8 h-8 rounded-full hover:bg-glide-light flex items-center justify-center"
             aria-label="Close"
           >
             ×
           </button>
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           <Field label="Title">
             <input
               required
@@ -167,29 +169,15 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
           </Field>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 pt-1">
           <button type="button" onClick={onClose} className="btn-ghost text-sm">
             Cancel
           </button>
           <button type="submit" className="btn-primary text-sm">
-            Submit
+            Submit Event
           </button>
         </div>
       </form>
-
-      <style>{`
-        .input {
-          width: 100%;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid #1c2438;
-          border-radius: 0.75rem;
-          padding: 0.55rem 0.8rem;
-          font-size: 0.9rem;
-          color: white;
-          outline: none;
-        }
-        .input:focus { border-color: rgba(94,234,212,0.6); }
-      `}</style>
     </div>
   )
 }
@@ -203,7 +191,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-xs uppercase tracking-wide text-white/50 mb-1">
+      <span className="block text-xs uppercase tracking-wider text-glide-gray font-medium mb-1.5">
         {label}
       </span>
       {children}

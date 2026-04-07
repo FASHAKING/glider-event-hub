@@ -22,7 +22,12 @@ const allCategories: EventCategory[] = [
   'Launch',
 ]
 
-export default function EventList({ events }: { events: GliderEvent[] }) {
+interface EventListProps {
+  events: GliderEvent[]
+  onOpenEvent: (event: GliderEvent) => void
+}
+
+export default function EventList({ events, onOpenEvent }: EventListProps) {
   const [tab, setTab] = useState<Tab>('all')
   const [query, setQuery] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
@@ -189,13 +194,25 @@ export default function EventList({ events }: { events: GliderEvent[] }) {
       ) : view === 'grid' ? (
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map(({ event, status }) => (
-            <EventCard key={event.id} event={event} status={status} layout="grid" />
+            <EventCard
+              key={event.id}
+              event={event}
+              status={status}
+              layout="grid"
+              onOpen={onOpenEvent}
+            />
           ))}
         </div>
       ) : (
         <div className="flex flex-col gap-3">
           {visible.map(({ event, status }) => (
-            <EventCard key={event.id} event={event} status={status} layout="list" />
+            <EventCard
+              key={event.id}
+              event={event}
+              status={status}
+              layout="list"
+              onOpen={onOpenEvent}
+            />
           ))}
         </div>
       )}

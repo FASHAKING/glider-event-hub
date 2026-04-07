@@ -4,16 +4,22 @@ import LiveBanner from './components/LiveBanner'
 import HeroCard from './components/HeroCard'
 import EventList from './components/EventList'
 import SubmitEventModal from './components/SubmitEventModal'
+import EventDetailModal from './components/EventDetailModal'
+import AuthModal from './components/AuthModal'
+import ProfileModal from './components/ProfileModal'
 import Footer from './components/Footer'
 import { sampleEvents } from './data/events'
 import type { GliderEvent } from './types'
-import { getEventStatus } from './types'
+import { expandRecurringEvents, getEventStatus } from './types'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import { useLiveEventNotifications } from './hooks/useLiveEventNotifications'
 
 const STORAGE_KEY = 'glider-event-hub:user-events'
 // rough community member counter for the hero card stat
 const COMMUNITY_MEMBERS = 1248
 
-export default function App() {
+function AppInner() {
+  const { user } = useAuth()
   const [userEvents, setUserEvents] = useState<GliderEvent[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
@@ -22,7 +28,11 @@ export default function App() {
       return []
     }
   })
-  const [modalOpen, setModalOpen] = useState(false)
+  const [submitOpen, setSubmitOpen] = useState(false)
+  const [authOpen, setAuthOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [activeEvent, setActiveEvent] = useState<GliderEvent | null>(null)
   const [, forceTick] = useState(0)
 
   // Re-evaluate live/upcoming/past every 30s
@@ -36,9 +46,12 @@ export default function App() {
   }, [userEvents])
 
   const allEvents = useMemo(
-    () => [...sampleEvents, ...userEvents],
+    () => expandRecurringEvents([...sampleEvents, ...userEvents]),
     [userEvents],
   )
+
+  // notification dispatcher hook
+  useLiveEventNotifications(allEvents)
 
   const liveEvent = allEvents.find((e) => getEventStatus(e) === 'live')
 
@@ -50,9 +63,19 @@ export default function App() {
       )[0]
   }, [allEvents])
 
+  const openAuth = (mode: 'signin' | 'signup' = 'signin') => {
+    setAuthMode(mode)
+    setAuthOpen(true)
+  }
+
   return (
     <div className="min-h-screen flex flex-col lg:pl-64">
-      <Sidebar onSubmitClick={() => setModalOpen(true)} />
+      <Sidebar
+        onSubmitClick={() => setSubmitOpen(true)}
+        onSignInClick={() => openAuth('signin')}
+        onSignUpClick={() => openAuth('signup')}
+        onProfileClick={() => setProfileOpen(true)}
+      />
 
       {liveEvent && <LiveBanner event={liveEvent} />}
 
@@ -61,21 +84,46 @@ export default function App() {
           total={allEvents.length}
           members={COMMUNITY_MEMBERS}
           nextEvent={nextEvent}
-          onSubmitClick={() => setModalOpen(true)}
+          onSubmitClick={() => setSubmitOpen(true)}
         />
-        <EventList events={allEvents} />
+        <EventList events={allEvents} onOpenEvent={setActiveEvent} />
       </main>
 
       <Footer />
 
       <SubmitEventModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        open={submitOpen}
+        onClose={() => setSubmitOpen(false)}
         onSubmit={(e) => {
           setUserEvents((prev) => [...prev, e])
-          setModalOpen(false)
+          setSubmitOpen(false)
         }}
       />
+
+      <EventDetailModal
+        event={activeEvent}
+        onClose={() => setActiveEvent(null)}
+        onRequireAuth={() => openAuth('signup')}
+      />
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        initialMode={authMode}
+      />
+
+      <ProfileModal
+        open={profileOpen && !!user}
+        onClose={() => setProfileOpen(false)}
+      />
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   )
 }

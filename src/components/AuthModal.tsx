@@ -25,21 +25,28 @@ export default function AuthModal({ open, onClose, initialMode = 'signin' }: Pro
 
   if (!open) return null
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
-    const result =
-      mode === 'signup'
-        ? signUp(username, email, password)
-        : signIn(email, password)
-    if (!result.ok) {
-      setError(result.error)
-      return
+    setSubmitting(true)
+    try {
+      const result =
+        mode === 'signup'
+          ? await signUp(username, email, password)
+          : await signIn(email, password)
+      if (!result.ok) {
+        setError(result.error)
+        return
+      }
+      setUsername('')
+      setEmail('')
+      setPassword('')
+      onClose()
+    } finally {
+      setSubmitting(false)
     }
-    setUsername('')
-    setEmail('')
-    setPassword('')
-    onClose()
   }
 
   return (
@@ -113,8 +120,14 @@ export default function AuthModal({ open, onClose, initialMode = 'signin' }: Pro
           </div>
         )}
 
-        <button type="submit" className="btn-primary w-full text-sm">
-          {mode === 'signup' ? 'Create account' : 'Sign in'}
+        <button type="submit" className="btn-primary w-full text-sm" disabled={submitting}>
+          {submitting
+            ? mode === 'signup'
+              ? 'Creating…'
+              : 'Signing in…'
+            : mode === 'signup'
+              ? 'Create account'
+              : 'Sign in'}
         </button>
 
         <div className="text-center text-xs text-glider-gray dark:text-glider-darkMuted">

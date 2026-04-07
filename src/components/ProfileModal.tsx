@@ -1,14 +1,19 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   ensureNotificationPermission,
   getNotificationHistory,
+  getNotificationHistoryFromDb,
+  type NotificationRecord,
 } from '../services/notifications'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import type { SocialPlatform } from '../types'
 
 interface Props {
   open: boolean
   onClose: () => void
+  /** Optional bot username, used to build the t.me link */
+  telegramBotUsername?: string
 }
 
 const platforms: {
@@ -35,7 +40,7 @@ const platforms: {
     key: 'telegram',
     name: 'Telegram',
     placeholder: '@telegram_handle',
-    hint: 'Get a DM from the Glider bot for live events and updates.',
+    hint: 'Tap "Connect" to get a one-time code, then start the Glider bot to link your chat.',
     color: 'bg-[#229ED9] text-white',
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -57,16 +62,65 @@ const platforms: {
   },
 ]
 
-export default function ProfileModal({ open, onClose }: Props) {
+function randomCode(len = 8) {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  let out = ''
+  for (let i = 0; i < len; i++)
+    out += chars.charAt(Math.floor(Math.random() * chars.length))
+  return out
+}
+
+export default function ProfileModal({
+  open,
+  onClose,
+  telegramBotUsername,
+}: Props) {
   const {
     user,
     signOut,
     connectSocial,
     disconnectSocial,
     toggleSocialNotifications,
+    refresh,
   } = useAuth()
   const [draftHandles, setDraftHandles] = useState<Record<string, string>>({})
   const [tab, setTab] = useState<'socials' | 'history'>('socials')
+  const [telegramCode, setTelegramCode] = useState<string | null>(null)
+  const [telegramPolling, setTelegramPolling] = useState(false)
+  const [history, setHistory] = useState<NotificationRecord[]>([])
+
+  // Load notification history when modal opens
+  useEffect(() => {
+    if (!open || !user) return
+    let alive = true
+    const load = async () => {
+      const items = isSupabaseConfigured
+        ? await getNotificationHistoryFromDb(user.id)
+        : getNotificationHistory(user.id)
+      if (alive) setHistory(items)
+    }
+    load()
+    return () => {
+      alive = false
+    }
+  }, [open, user, tab])
+
+  // Poll for the Telegram link to complete
+  useEffect(() => {
+    if (!telegramPolling || !user || !isSupabaseConfigured || !supabase) return
+    const id = setInterval(async () => {
+      await refresh()
+    }, 3000)
+    return () => clearInterval(id)
+  }, [telegramPolling, user, refresh])
+
+  // Stop polling once telegram is connected
+  useEffect(() => {
+    if (user?.socials.telegram?.externalId && telegramPolling) {
+      setTelegramPolling(false)
+      setTelegramCode(null)
+    }
+  }, [user, telegramPolling])
 
   if (!open || !user) return null
 
@@ -74,18 +128,36 @@ export default function ProfileModal({ open, onClose }: Props) {
     setDraftHandles((d) => ({ ...d, [k]: v }))
 
   const handleConnect = async (platform: SocialPlatform) => {
+    if (platform === 'telegram' && isSupabaseConfigured && supabase) {
+      // Generate a one-time link code, store it server-side, then send the
+      // user to the Telegram bot.
+      const code = randomCode()
+      const { error } = await supabase.from('telegram_link_codes').insert({
+        code,
+        user_id: user.id,
+      })
+      if (error) {
+        alert(error.message)
+        return
+      }
+      setTelegramCode(code)
+      setTelegramPolling(true)
+      const botUrl = telegramBotUsername
+        ? `https://t.me/${telegramBotUsername}?start=${code}`
+        : null
+      if (botUrl) window.open(botUrl, '_blank', 'noopener')
+      return
+    }
+
     const handle = draftHandles[platform] || ''
-    const result = connectSocial(platform, handle)
+    const result = await connectSocial(platform, handle)
     if (result.ok) {
       setDraft(platform, '')
-      // ask for browser notification permission as a best-effort fallback
       await ensureNotificationPermission()
     } else {
       alert(result.error)
     }
   }
-
-  const history = getNotificationHistory(user.id)
 
   return (
     <div
@@ -134,7 +206,9 @@ export default function ProfileModal({ open, onClose }: Props) {
                   : 'border-transparent text-glider-gray dark:text-glider-darkMuted hover:text-glider-black dark:hover:text-glider-darkText'
               }`}
             >
-              {t === 'socials' ? 'Connected Socials' : `Notifications (${history.length})`}
+              {t === 'socials'
+                ? 'Connected Socials'
+                : `Notifications (${history.length})`}
             </button>
           ))}
         </div>
@@ -144,8 +218,8 @@ export default function ProfileModal({ open, onClose }: Props) {
           {tab === 'socials' ? (
             <>
               <p className="text-sm text-glider-gray dark:text-glider-darkMuted">
-                Connect your accounts to get notified across X, Telegram, and Discord
-                when events you're tracking go live or are updated.
+                Connect your accounts to get notified across X, Telegram, and
+                Discord when events you're tracking go live or are updated.
               </p>
 
               {platforms.map((p) => {
@@ -155,7 +229,9 @@ export default function ProfileModal({ open, onClose }: Props) {
                     key={p.key}
                     className="bg-glider-light dark:bg-glider-darkPanel2 border border-glider-border dark:border-glider-darkBorder rounded-xl p-4 flex flex-col sm:flex-row gap-3 sm:items-center"
                   >
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${p.color}`}>
+                    <div
+                      className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${p.color}`}
+                    >
                       {p.icon}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -168,12 +244,48 @@ export default function ProfileModal({ open, onClose }: Props) {
                           <span className="font-mono text-glider-olive dark:text-glider-mint">
                             @{conn.handle}
                           </span>
+                          {conn.externalId && (
+                            <span className="ml-1 text-[10px] text-glider-mint">
+                              · chat linked
+                            </span>
+                          )}
                         </div>
                       ) : (
                         <div className="text-xs text-glider-gray dark:text-glider-darkMuted">
                           {p.hint}
                         </div>
                       )}
+                      {p.key === 'telegram' &&
+                        telegramCode &&
+                        telegramPolling && (
+                          <div className="mt-2 text-xs text-glider-olive dark:text-glider-mint">
+                            One-time code:{' '}
+                            <span className="font-mono font-bold">
+                              {telegramCode}
+                            </span>
+                            {telegramBotUsername ? (
+                              <>
+                                {' '}
+                                — open{' '}
+                                <a
+                                  href={`https://t.me/${telegramBotUsername}?start=${telegramCode}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="underline"
+                                >
+                                  the Glider bot
+                                </a>{' '}
+                                and tap Start.
+                              </>
+                            ) : (
+                              <>
+                                {' '}
+                                — DM the Glider bot{' '}
+                                <code>/start {telegramCode}</code>.
+                              </>
+                            )}
+                          </div>
+                        )}
                     </div>
 
                     {conn ? (
@@ -196,12 +308,14 @@ export default function ProfileModal({ open, onClose }: Props) {
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <input
-                          value={draftHandles[p.key] || ''}
-                          onChange={(e) => setDraft(p.key, e.target.value)}
-                          className="input !py-1.5 text-xs sm:w-44"
-                          placeholder={p.placeholder}
-                        />
+                        {p.key !== 'telegram' && (
+                          <input
+                            value={draftHandles[p.key] || ''}
+                            onChange={(e) => setDraft(p.key, e.target.value)}
+                            className="input !py-1.5 text-xs sm:w-44"
+                            placeholder={p.placeholder}
+                          />
+                        )}
                         <button
                           type="button"
                           onClick={() => handleConnect(p.key)}
@@ -257,8 +371,8 @@ export default function ProfileModal({ open, onClose }: Props) {
           </span>
           <button
             type="button"
-            onClick={() => {
-              signOut()
+            onClick={async () => {
+              await signOut()
               onClose()
             }}
             className="btn-ghost text-xs py-1.5 px-3"

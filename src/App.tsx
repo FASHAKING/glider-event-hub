@@ -8,26 +8,22 @@ import EventDetailModal from './components/EventDetailModal'
 import AuthModal from './components/AuthModal'
 import ProfileModal from './components/ProfileModal'
 import Footer from './components/Footer'
-import { sampleEvents } from './data/events'
 import type { GliderEvent } from './types'
 import { expandRecurringEvents, getEventStatus } from './types'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import { useLiveEventNotifications } from './hooks/useLiveEventNotifications'
+import { useEvents } from './hooks/useEvents'
+import { isSupabaseConfigured } from './lib/supabase'
 
-const STORAGE_KEY = 'glider-event-hub:user-events'
 // rough community member counter for the hero card stat
 const COMMUNITY_MEMBERS = 1248
+const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as
+  | string
+  | undefined
 
 function AppInner() {
   const { user } = useAuth()
-  const [userEvents, setUserEvents] = useState<GliderEvent[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      return raw ? (JSON.parse(raw) as GliderEvent[]) : []
-    } catch {
-      return []
-    }
-  })
+  const { events, submitEvent } = useEvents(user?.id || null)
   const [submitOpen, setSubmitOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
@@ -41,14 +37,7 @@ function AppInner() {
     return () => clearInterval(id)
   }, [])
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userEvents))
-  }, [userEvents])
-
-  const allEvents = useMemo(
-    () => expandRecurringEvents([...sampleEvents, ...userEvents]),
-    [userEvents],
-  )
+  const allEvents = useMemo(() => expandRecurringEvents(events), [events])
 
   // notification dispatcher hook
   useLiveEventNotifications(allEvents)
@@ -71,11 +60,24 @@ function AppInner() {
   return (
     <div className="min-h-screen flex flex-col lg:pl-64">
       <Sidebar
-        onSubmitClick={() => setSubmitOpen(true)}
+        onSubmitClick={() => {
+          if (isSupabaseConfigured && !user) {
+            openAuth('signup')
+            return
+          }
+          setSubmitOpen(true)
+        }}
         onSignInClick={() => openAuth('signin')}
         onSignUpClick={() => openAuth('signup')}
         onProfileClick={() => setProfileOpen(true)}
       />
+
+      {!isSupabaseConfigured && (
+        <div className="bg-amber-100 dark:bg-amber-500/20 border-b border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs px-5 py-1.5 text-center">
+          Demo mode — Supabase not configured. Set <code>VITE_SUPABASE_URL</code> and
+          <code className="ml-1">VITE_SUPABASE_ANON_KEY</code> in <code>.env.local</code> to enable real accounts and notifications.
+        </div>
+      )}
 
       {liveEvent && <LiveBanner event={liveEvent} />}
 
@@ -84,7 +86,13 @@ function AppInner() {
           total={allEvents.length}
           members={COMMUNITY_MEMBERS}
           nextEvent={nextEvent}
-          onSubmitClick={() => setSubmitOpen(true)}
+          onSubmitClick={() => {
+            if (isSupabaseConfigured && !user) {
+              openAuth('signup')
+              return
+            }
+            setSubmitOpen(true)
+          }}
         />
         <EventList events={allEvents} onOpenEvent={setActiveEvent} />
       </main>
@@ -94,9 +102,13 @@ function AppInner() {
       <SubmitEventModal
         open={submitOpen}
         onClose={() => setSubmitOpen(false)}
-        onSubmit={(e) => {
-          setUserEvents((prev) => [...prev, e])
-          setSubmitOpen(false)
+        onSubmit={async (payload) => {
+          const result = await submitEvent(payload)
+          if (result.ok) {
+            setSubmitOpen(false)
+            return { ok: true as const }
+          }
+          return { ok: false as const, error: result.error }
         }}
       />
 
@@ -115,6 +127,7 @@ function AppInner() {
       <ProfileModal
         open={profileOpen && !!user}
         onClose={() => setProfileOpen(false)}
+        telegramBotUsername={TELEGRAM_BOT_USERNAME}
       />
     </div>
   )

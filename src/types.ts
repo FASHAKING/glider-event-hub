@@ -108,6 +108,8 @@ export interface SocialConnection {
   connectedAt: string
   /** whether notifications are enabled for this platform */
   notifications: boolean
+  /** Server-side identifier (e.g. Telegram chat_id) used by the bot */
+  externalId?: string
 }
 
 export type SocialConnections = Partial<Record<SocialPlatform, SocialConnection>>

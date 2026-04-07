@@ -1,4 +1,5 @@
 import type { GliderEvent, SocialPlatform, UserAccount } from '../types'
+import { supabase, isSupabaseConfigured } from '../lib/supabase'
 
 /**
  * Front-end notification dispatcher.
@@ -52,6 +53,30 @@ export function getNotificationHistory(userId: string): NotificationRecord[] {
   return loadHistory()
     .filter((n) => n.userId === userId)
     .reverse()
+}
+
+/** Loads notification history from Supabase when configured. */
+export async function getNotificationHistoryFromDb(
+  userId: string,
+): Promise<NotificationRecord[]> {
+  if (!isSupabaseConfigured || !supabase) return getNotificationHistory(userId)
+  const { data, error } = await supabase
+    .from('notification_log')
+    .select('*')
+    .eq('user_id', userId)
+    .order('sent_at', { ascending: false })
+    .limit(100)
+  if (error || !data) return []
+  return data.map((row) => ({
+    id: row.id,
+    userId: row.user_id,
+    eventId: row.event_id || '',
+    kind: row.kind as NotificationKind,
+    title: row.title,
+    body: row.body,
+    platforms: (row.platforms || []) as SocialPlatform[],
+    sentAt: row.sent_at,
+  }))
 }
 
 export function clearNotificationHistory(userId: string) {
@@ -121,7 +146,20 @@ export function dispatchEventNotification({
   history.push(record)
   saveHistory(history)
 
-  // simulate the platform deliveries
+  // best-effort persistence to Supabase
+  if (isSupabaseConfigured && supabase) {
+    void supabase.from('notification_log').insert({
+      user_id: user.id,
+      event_id: event.id,
+      kind,
+      title,
+      body,
+      platforms,
+    })
+  }
+
+  // simulate the platform deliveries (real Telegram delivery happens
+  // server-side via the notify-live-events Edge Function)
   // eslint-disable-next-line no-console
   console.info(
     `[notifications] -> ${platforms.join(', ')} | ${title} :: ${body}`,

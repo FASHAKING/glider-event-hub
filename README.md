@@ -1,21 +1,26 @@
-# Glide Event Hub
+# Glider Event Hub
 
-> The Single Source of Truth for the Glide Ecosystem.
+> Your single source of truth for everything happening across the Glider ecosystem.
 
 A real-time community dashboard that aggregates AMAs, quizzes, workshops,
-hackathons, meetups and launches across the Glide ecosystem. Inspired by the
-[rialo-event-hub](https://github.com/mrnetwork0001/rialo-event-hub) community
-project.
+hackathons, meetups and launches across the Glider community — all in one place.
 
 ## Features
 
-- **Live / Upcoming / Past** event categorization computed automatically from
-  event start time and duration.
+- **Sidebar navigation** — Home, Calendar, Leaderboard, Suggestions, Submit
+  Event, plus Glider Discord & website links.
+- **Live "Happening Now" banner** that surfaces any event currently live with a
+  one-click join button.
+- **Hero card** with stats: total events, community members, and a live
+  countdown to the next event.
+- **Tab filters**: All / Upcoming / Now / Past, plus a category dropdown
+  (AMA, Quiz, Workshop, Meetup, Hackathon, Launch).
+- **Grid and list view toggles** with consistent styling for both layouts.
 - **Search** across titles, hosts, categories and tags.
 - **Community submissions** — submit events via an in-app form (stored in
-  `localStorage` for now; can be wired to Supabase or any backend later).
-- **Modern web3-styled UI** with Tailwind CSS.
-- **Zero backend required** to try it locally.
+  `localStorage` for now; can be wired to any backend later).
+- **Modern, clean Glider-branded UI** with custom SVG icons and gradient card
+  headers per event accent.
 
 ## Tech Stack
 
@@ -36,8 +41,8 @@ project.
 | Background | Light Gray | `#F5F5F7` |
 | Muted text | Dark Gray | `#626262` |
 
-All colors are exposed as Tailwind utilities: `bg-glide-mint`, `text-glide-olive`,
-`border-glide-sky`, `bg-glide-light`, `text-glide-gray`, etc. See
+All colors are exposed as Tailwind utilities: `bg-glider-mint`, `text-glider-olive`,
+`border-glider-sky`, `bg-glider-light`, `text-glider-gray`, etc. See
 [`tailwind.config.js`](tailwind.config.js).
 
 ## Getting Started
@@ -67,6 +72,7 @@ Then open http://localhost:5173.
 ├── tailwind.config.js
 ├── postcss.config.js
 ├── tsconfig.json
+├── vercel.json
 ├── vite.config.ts
 └── src
     ├── App.tsx
@@ -74,14 +80,17 @@ Then open http://localhost:5173.
     ├── index.css
     ├── types.ts
     ├── data/
-    │   └── events.ts          # sample Glide events
+    │   └── events.ts          # sample Glider events
     └── components/
-        ├── Header.tsx
-        ├── Hero.tsx
-        ├── EventCard.tsx
+        ├── Sidebar.tsx
+        ├── LiveBanner.tsx
+        ├── HeroCard.tsx
         ├── EventList.tsx
+        ├── EventCard.tsx
         ├── SubmitEventModal.tsx
-        └── Footer.tsx
+        ├── Footer.tsx
+        ├── Logo.tsx
+        └── Icons.tsx
 ```
 
 ## Customizing Events
@@ -93,7 +102,7 @@ submissions are persisted to the browser's `localStorage`.
 Each event has the shape:
 
 ```ts
-interface GlideEvent {
+interface GliderEvent {
   id: string
   title: string
   description: string
@@ -104,6 +113,7 @@ interface GlideEvent {
   link: string
   location?: string
   tags?: string[]
+  accent?: 'mint' | 'olive' | 'sky'   // card header gradient
 }
 ```
 
@@ -139,7 +149,5 @@ Vercel.
 - Email / Telegram / Discord reminder integrations.
 - AI-generated recaps for past events.
 - Calendar export (`.ics`) for individual events.
-
-## Disclaimer
-
-This is an unofficial, community-built project and is not affiliated with Glide.
+- Event albums / photo galleries.
+- Community leaderboard.

@@ -49,6 +49,37 @@ export const SearchIcon = (p: IconProps) => (
   </svg>
 )
 
+export const SendIcon = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M22 2L11 13" />
+    <path d="M22 2l-7 20-4-9-9-4 20-7z" />
+  </svg>
+)
+
+export const GridIcon = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <rect x="14" y="14" width="7" height="7" rx="1" />
+  </svg>
+)
+
+export const ListIcon = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M8 6h13M8 12h13M8 18h13" />
+    <circle cx="4" cy="6" r="1" fill="currentColor" />
+    <circle cx="4" cy="12" r="1" fill="currentColor" />
+    <circle cx="4" cy="18" r="1" fill="currentColor" />
+  </svg>
+)
+
+export const ChevronDownIcon = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M6 9l6 6 6-6" />
+  </svg>
+)
+
 export const PlusIcon = (p: IconProps) => (
   <svg {...base} {...p}>
     <path d="M12 5v14M5 12h14" />

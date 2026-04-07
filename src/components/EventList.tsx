@@ -1,99 +1,199 @@
 import { useMemo, useState } from 'react'
-import type { GlideEvent, EventStatus } from '../types'
+import type { GliderEvent, EventStatus, EventCategory } from '../types'
 import { getEventStatus } from '../types'
 import EventCard from './EventCard'
-import { SearchIcon } from './Icons'
+import { SearchIcon, GridIcon, ListIcon, ChevronDownIcon } from './Icons'
 
-const tabs: { key: EventStatus; label: string }[] = [
-  { key: 'live', label: 'Live' },
+type Tab = 'all' | EventStatus
+
+const tabs: { key: Tab; label: string }[] = [
+  { key: 'all', label: 'All' },
   { key: 'upcoming', label: 'Upcoming' },
+  { key: 'live', label: 'Now' },
   { key: 'past', label: 'Past' },
 ]
 
-export default function EventList({ events }: { events: GlideEvent[] }) {
-  const [tab, setTab] = useState<EventStatus>('upcoming')
+const allCategories: EventCategory[] = [
+  'AMA',
+  'Quiz',
+  'Workshop',
+  'Meetup',
+  'Hackathon',
+  'Launch',
+]
+
+export default function EventList({ events }: { events: GliderEvent[] }) {
+  const [tab, setTab] = useState<Tab>('all')
   const [query, setQuery] = useState('')
+  const [view, setView] = useState<'grid' | 'list'>('grid')
+  const [category, setCategory] = useState<EventCategory | 'All'>('All')
+  const [catOpen, setCatOpen] = useState(false)
 
-  const grouped = useMemo(() => {
-    const g: Record<EventStatus, GlideEvent[]> = { live: [], upcoming: [], past: [] }
-    for (const e of events) g[getEventStatus(e)].push(e)
-    g.upcoming.sort(
-      (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
-    )
-    g.past.sort(
-      (a, b) => new Date(b.startsAt).getTime() - new Date(a.startsAt).getTime(),
-    )
-    return g
-  }, [events])
+  const withStatus = useMemo(
+    () => events.map((e) => ({ event: e, status: getEventStatus(e) })),
+    [events],
+  )
 
-  const visible = grouped[tab].filter((e) => {
-    if (!query.trim()) return true
-    const q = query.toLowerCase()
-    return (
-      e.title.toLowerCase().includes(q) ||
-      e.description.toLowerCase().includes(q) ||
-      e.host.toLowerCase().includes(q) ||
-      e.category.toLowerCase().includes(q) ||
-      (e.tags || []).some((t) => t.toLowerCase().includes(q))
-    )
-  })
+  const counts = useMemo(() => {
+    const c: Record<Tab, number> = { all: events.length, live: 0, upcoming: 0, past: 0 }
+    for (const { status } of withStatus) c[status]++
+    return c
+  }, [withStatus, events.length])
+
+  const visible = useMemo(() => {
+    let list = withStatus
+    if (tab !== 'all') list = list.filter((x) => x.status === tab)
+    if (category !== 'All') list = list.filter((x) => x.event.category === category)
+    if (query.trim()) {
+      const q = query.toLowerCase()
+      list = list.filter(({ event: e }) =>
+        e.title.toLowerCase().includes(q) ||
+        e.description.toLowerCase().includes(q) ||
+        e.host.toLowerCase().includes(q) ||
+        e.category.toLowerCase().includes(q) ||
+        (e.tags || []).some((t) => t.toLowerCase().includes(q)),
+      )
+    }
+    // sort: live first, then upcoming asc, then past desc
+    return [...list].sort((a, b) => {
+      const order: Record<EventStatus, number> = { live: 0, upcoming: 1, past: 2 }
+      if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status]
+      const at = new Date(a.event.startsAt).getTime()
+      const bt = new Date(b.event.startsAt).getTime()
+      return a.status === 'past' ? bt - at : at - bt
+    })
+  }, [withStatus, tab, category, query])
 
   return (
-    <section id="events" className="max-w-6xl mx-auto px-5 py-12">
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-        <div className="flex items-center gap-1 p-1 bg-white border border-glide-border rounded-2xl shadow-soft w-fit">
-          {tabs.map((t) => {
-            const count = grouped[t.key].length
-            const active = tab === t.key
-            return (
-              <button
-                key={t.key}
-                onClick={() => setTab(t.key)}
-                className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                  active
-                    ? 'bg-glide-olive text-white shadow-sm'
-                    : 'text-glide-gray hover:text-glide-black hover:bg-glide-light'
-                }`}
-              >
-                {t.label}
-                <span
-                  className={`ml-2 text-xs ${
-                    active ? 'text-white/75' : 'text-glide-gray/60'
+    <section id="events" className="px-5 lg:px-10 py-8">
+      {/* Filters bar */}
+      <div className="flex flex-col gap-4 mb-7">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex items-center gap-1 p-1 bg-white border border-glider-border rounded-2xl shadow-soft w-fit">
+            {tabs.map((t) => {
+              const count = counts[t.key]
+              const active = tab === t.key
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all ${
+                    active
+                      ? 'bg-glider-olive text-white shadow-sm'
+                      : 'text-glider-gray hover:text-glider-black hover:bg-glider-light'
                   }`}
                 >
-                  {count}
-                </span>
-              </button>
-            )
-          })}
-        </div>
+                  {t.label}
+                  <span
+                    className={`ml-1.5 text-xs ${
+                      active ? 'text-white/75' : 'text-glider-gray/60'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </button>
+              )
+            })}
+          </div>
 
-        <div className="relative md:w-80">
-          <SearchIcon
-            width={16}
-            height={16}
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-glide-gray"
-          />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search events, hosts, tags…"
-            className="input pl-10"
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[200px] lg:w-72">
+              <SearchIcon
+                width={16}
+                height={16}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-glider-gray"
+              />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search events…"
+                className="input pl-10"
+              />
+            </div>
+
+            {/* Category dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setCatOpen((o) => !o)}
+                onBlur={() => setTimeout(() => setCatOpen(false), 150)}
+                className="input flex items-center gap-2 min-w-[170px] !w-auto"
+              >
+                <span className="flex-1 text-left">
+                  {category === 'All' ? 'All Categories' : category}
+                </span>
+                <ChevronDownIcon
+                  width={16}
+                  height={16}
+                  className={`text-glider-gray transition ${catOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
+              {catOpen && (
+                <div className="absolute right-0 mt-1.5 z-20 bg-white border border-glider-border rounded-xl shadow-card py-1 min-w-[170px]">
+                  {(['All', ...allCategories] as const).map((c) => (
+                    <button
+                      key={c}
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => {
+                        setCategory(c)
+                        setCatOpen(false)
+                      }}
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-glider-light ${
+                        category === c ? 'text-glider-olive font-semibold' : 'text-glider-black'
+                      }`}
+                    >
+                      {c === 'All' ? 'All Categories' : c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* View toggle */}
+            <div className="flex items-center gap-1 p-1 bg-white border border-glider-border rounded-xl">
+              <button
+                onClick={() => setView('list')}
+                aria-label="List view"
+                className={`p-1.5 rounded-lg transition ${
+                  view === 'list'
+                    ? 'bg-glider-olive text-white'
+                    : 'text-glider-gray hover:bg-glider-light'
+                }`}
+              >
+                <ListIcon width={16} height={16} />
+              </button>
+              <button
+                onClick={() => setView('grid')}
+                aria-label="Grid view"
+                className={`p-1.5 rounded-lg transition ${
+                  view === 'grid'
+                    ? 'bg-glider-olive text-white'
+                    : 'text-glider-gray hover:bg-glider-light'
+                }`}
+              >
+                <GridIcon width={16} height={16} />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 
       {visible.length === 0 ? (
         <div className="card p-12 text-center">
-          <p className="text-glide-black font-medium">No {tab} events found</p>
-          <p className="text-glide-gray text-sm mt-1">
-            Try a different search or check back soon.
+          <p className="text-glider-black font-medium">No events found</p>
+          <p className="text-glider-gray text-sm mt-1">
+            Try a different filter or check back soon.
           </p>
         </div>
+      ) : view === 'grid' ? (
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+          {visible.map(({ event, status }) => (
+            <EventCard key={event.id} event={event} status={status} layout="grid" />
+          ))}
+        </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((e) => (
-            <EventCard key={e.id} event={e} status={tab} />
+        <div className="flex flex-col gap-3">
+          {visible.map(({ event, status }) => (
+            <EventCard key={event.id} event={event} status={status} layout="list" />
           ))}
         </div>
       )}

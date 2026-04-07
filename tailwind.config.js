@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        glide: {
+        glider: {
           mint: "#A8E0D1",
           olive: "#4F7F58",
           sky: "#A3C8E0",

@@ -1,20 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
-import Header from './components/Header'
-import Hero from './components/Hero'
+import Sidebar from './components/Sidebar'
+import LiveBanner from './components/LiveBanner'
+import HeroCard from './components/HeroCard'
 import EventList from './components/EventList'
 import SubmitEventModal from './components/SubmitEventModal'
 import Footer from './components/Footer'
 import { sampleEvents } from './data/events'
-import type { GlideEvent } from './types'
+import type { GliderEvent } from './types'
 import { getEventStatus } from './types'
 
-const STORAGE_KEY = 'glide-event-hub:user-events'
+const STORAGE_KEY = 'glider-event-hub:user-events'
+// rough community member counter for the hero card stat
+const COMMUNITY_MEMBERS = 1248
 
 export default function App() {
-  const [userEvents, setUserEvents] = useState<GlideEvent[]>(() => {
+  const [userEvents, setUserEvents] = useState<GliderEvent[]>(() => {
     try {
       const raw = localStorage.getItem(STORAGE_KEY)
-      return raw ? (JSON.parse(raw) as GlideEvent[]) : []
+      return raw ? (JSON.parse(raw) as GliderEvent[]) : []
     } catch {
       return []
     }
@@ -37,16 +40,34 @@ export default function App() {
     [userEvents],
   )
 
-  const liveCount = allEvents.filter((e) => getEventStatus(e) === 'live').length
+  const liveEvent = allEvents.find((e) => getEventStatus(e) === 'live')
+
+  const nextEvent = useMemo(() => {
+    return allEvents
+      .filter((e) => getEventStatus(e) === 'upcoming')
+      .sort(
+        (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+      )[0]
+  }, [allEvents])
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header onSubmitClick={() => setModalOpen(true)} />
+    <div className="min-h-screen flex flex-col lg:pl-64">
+      <Sidebar onSubmitClick={() => setModalOpen(true)} />
+
+      {liveEvent && <LiveBanner event={liveEvent} />}
+
       <main className="flex-1">
-        <Hero total={allEvents.length} live={liveCount} />
+        <HeroCard
+          total={allEvents.length}
+          members={COMMUNITY_MEMBERS}
+          nextEvent={nextEvent}
+          onSubmitClick={() => setModalOpen(true)}
+        />
         <EventList events={allEvents} />
       </main>
+
       <Footer />
+
       <SubmitEventModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}

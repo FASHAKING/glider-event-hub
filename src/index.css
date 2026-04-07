@@ -25,24 +25,24 @@ h1, h2, h3, h4, .font-display {
 
 @layer components {
   .card {
-    @apply bg-glide-panel border border-glide-border rounded-2xl shadow-soft;
+    @apply bg-glider-panel border border-glider-border rounded-2xl shadow-soft;
   }
   .btn {
     @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200;
   }
   .btn-primary {
-    @apply btn bg-glide-olive text-white hover:bg-glide-olive/90 shadow-sm hover:shadow-glow;
+    @apply btn bg-glider-olive text-white hover:bg-glider-olive/90 shadow-sm hover:shadow-glow;
   }
   .btn-soft {
-    @apply btn bg-glide-mint text-glide-olive hover:bg-glide-mint/80;
+    @apply btn bg-glider-mint text-glider-olive hover:bg-glider-mint/80;
   }
   .btn-ghost {
-    @apply btn bg-white border border-glide-border text-glide-text hover:border-glide-olive/40 hover:bg-glide-light;
+    @apply btn bg-white border border-glider-border text-glider-text hover:border-glider-olive/40 hover:bg-glider-light;
   }
   .chip {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border;
   }
   .input {
-    @apply w-full bg-white border border-glide-border rounded-xl px-3.5 py-2.5 text-sm text-glide-text placeholder:text-glide-muted/70 outline-none focus:border-glide-olive focus:ring-2 focus:ring-glide-mint/50 transition;
+    @apply w-full bg-white border border-glider-border rounded-xl px-3.5 py-2.5 text-sm text-glider-text placeholder:text-glider-muted/70 outline-none focus:border-glider-olive focus:ring-2 focus:ring-glider-mint/50 transition;
   }
 }

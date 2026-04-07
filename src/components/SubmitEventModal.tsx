@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import type { GlideEvent, EventCategory } from '../types'
+import type { GliderEvent, EventCategory } from '../types'
 
 interface Props {
   open: boolean
   onClose: () => void
-  onSubmit: (e: GlideEvent) => void
+  onSubmit: (e: GliderEvent) => void
 }
 
 const categories: EventCategory[] = [
@@ -31,7 +31,7 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
   const handleSubmit = (ev: React.FormEvent) => {
     ev.preventDefault()
     if (!title || !host || !startsAt || !link) return
-    const event: GlideEvent = {
+    const event: GliderEvent = {
       id: `user-${Date.now()}`,
       title,
       description,
@@ -55,7 +55,7 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-glide-black/30 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-glider-black/30 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <form
@@ -65,17 +65,17 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="font-display text-2xl font-bold text-glide-black">
+            <h2 className="font-display text-2xl font-bold text-glider-black">
               Submit an Event
             </h2>
-            <p className="text-sm text-glide-gray mt-0.5">
-              Share a Glide community event with the hub.
+            <p className="text-sm text-glider-gray mt-0.5">
+              Share a Glider community event with the hub.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-glide-gray hover:text-glide-black text-2xl leading-none w-8 h-8 rounded-full hover:bg-glide-light flex items-center justify-center"
+            className="text-glider-gray hover:text-glider-black text-2xl leading-none w-8 h-8 rounded-full hover:bg-glider-light flex items-center justify-center"
             aria-label="Close"
           >
             ×
@@ -89,7 +89,7 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="input"
-              placeholder="Glide Community AMA"
+              placeholder="Glider Community AMA"
             />
           </Field>
 
@@ -191,7 +191,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-xs uppercase tracking-wider text-glide-gray font-medium mb-1.5">
+      <span className="block text-xs uppercase tracking-wider text-glider-gray font-medium mb-1.5">
         {label}
       </span>
       {children}

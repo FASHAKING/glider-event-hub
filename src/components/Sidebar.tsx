@@ -50,6 +50,11 @@ const DiscordIcon = (
     <path d="M19.3 5.3A17 17 0 0015 4l-.2.4a15 15 0 00-5.6 0L9 4a17 17 0 00-4.3 1.3A18 18 0 002 16a17 17 0 005.2 2.6l.5-.7c-.9-.3-1.7-.8-2.5-1.3l.6-.4a12 12 0 0012.4 0l.6.4c-.7.5-1.6 1-2.5 1.3l.5.7A17 17 0 0022 16a18 18 0 00-2.7-10.7zM9 14.5c-.9 0-1.6-.8-1.6-1.8s.7-1.8 1.6-1.8c1 0 1.7.8 1.6 1.8 0 1-.7 1.8-1.6 1.8zm6 0c-.9 0-1.6-.8-1.6-1.8s.7-1.8 1.6-1.8c1 0 1.7.8 1.6 1.8 0 1-.7 1.8-1.6 1.8z" />
   </svg>
 )
+const XIcon = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M18.244 2H21.5l-7.5 8.57L22.5 22h-6.844l-5.36-7.01L4.6 22H1.34l8.022-9.166L1.5 2h7.02l4.844 6.4L18.244 2zm-1.2 18h1.86L7.04 4H5.05l11.994 16z" />
+  </svg>
+)
 const MenuIcon = (
   <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M3 6h18M3 12h18M3 18h18" />
@@ -87,8 +92,9 @@ export default function Sidebar({ onSubmitClick }: Props) {
     { label: 'Suggestions', href: '#about', icon: BulbIcon },
   ]
   const links: NavItem[] = [
-    { label: 'Glider Discord', href: 'https://discord.gg/glider', external: true, icon: DiscordIcon },
-    { label: 'Glider Website', href: 'https://glider.xyz', external: true, icon: GlobeIcon },
+    { label: 'Glider Discord', href: 'https://discord.gg/xDy7M6xNPR', external: true, icon: DiscordIcon },
+    { label: 'Glider on X', href: 'https://x.com/glider_fi', external: true, icon: XIcon },
+    { label: 'Glider Website', href: 'https://glider.fi/r/v9t1x8jy', external: true, icon: GlobeIcon },
   ]
 
   return (

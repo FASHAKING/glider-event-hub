@@ -35,6 +35,14 @@ export default function HeroCard({
         <div className="pointer-events-none absolute -top-20 -right-16 w-72 h-72 rounded-full bg-glider-mint/40 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-24 -left-10 w-72 h-72 rounded-full bg-glider-sky/30 blur-3xl" />
 
+        {/* 3D Glider mark, decorative */}
+        <img
+          src="/brand/glider-icon-3d.png"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-6 -top-6 w-44 lg:w-56 opacity-90 drop-shadow-xl rotate-[8deg] hidden sm:block"
+        />
+
         <div className="relative">
           <span className="chip border-glider-mint bg-glider-mint/40 text-glider-olive">
             <SparkleIcon width={13} height={13} />

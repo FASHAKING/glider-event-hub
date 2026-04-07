@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Logo from './Logo'
+import Wordmark from './Wordmark'
 
 interface NavItem {
   label: string
@@ -82,11 +82,8 @@ export default function Sidebar({ onSubmitClick }: Props) {
     <>
       {/* mobile top bar */}
       <div className="lg:hidden sticky top-0 z-40 flex items-center justify-between bg-glider-bg/85 backdrop-blur border-b border-glider-border px-4 py-3">
-        <a href="#" className="flex items-center gap-2">
-          <Logo className="w-8 h-8" />
-          <span className="font-display font-bold text-glider-black">
-            Glider <span className="text-glider-olive">Event Hub</span>
-          </span>
+        <a href="#" className="flex items-center">
+          <Wordmark iconClassName="w-8 h-8" textClassName="text-base" />
         </a>
         <button
           onClick={() => setOpen(true)}
@@ -110,11 +107,8 @@ export default function Sidebar({ onSubmitClick }: Props) {
           ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
         <div className="flex items-center justify-between px-5 py-5">
-          <a href="#" className="flex items-center gap-2.5">
-            <Logo className="w-9 h-9" />
-            <span className="font-display font-bold text-glider-black">
-              Glider <span className="text-glider-olive">Hub</span>
-            </span>
+          <a href="#" className="flex items-center">
+            <Wordmark iconClassName="w-9 h-9" textClassName="text-base" />
           </a>
           <button
             className="lg:hidden text-glider-gray p-1.5 rounded-lg hover:bg-glider-light"

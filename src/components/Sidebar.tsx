@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Wordmark from './Wordmark'
 import ThemeToggle from './ThemeToggle'
+import { useAuth } from '../context/AuthContext'
 
 interface NavItem {
   label: string
@@ -68,7 +69,26 @@ const CloseIcon = (
 
 interface Props {
   onSubmitClick: () => void
+  onSignInClick: () => void
+  onSignUpClick: () => void
+  onProfileClick: () => void
 }
+
+const UserCircleIcon = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" />
+    <circle cx="12" cy="10" r="3" />
+    <path d="M6 19c1.5-2.5 3.5-4 6-4s4.5 1.5 6 4" />
+  </svg>
+)
+
+const SignInIcon = (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4" />
+    <path d="M10 17l5-5-5-5" />
+    <path d="M15 12H3" />
+  </svg>
+)
 
 const navLink =
   'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ' +
@@ -82,8 +102,14 @@ const sectionLabel =
   'px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider ' +
   'text-glider-gray/70 dark:text-glider-darkMuted/70'
 
-export default function Sidebar({ onSubmitClick }: Props) {
+export default function Sidebar({
+  onSubmitClick,
+  onSignInClick,
+  onSignUpClick,
+  onProfileClick,
+}: Props) {
   const [open, setOpen] = useState(false)
+  const { user } = useAuth()
 
   const items: NavItem[] = [
     { label: 'Home', href: '#', icon: HomeIcon },
@@ -106,6 +132,23 @@ export default function Sidebar({ onSubmitClick }: Props) {
         </a>
         <div className="flex items-center gap-2">
           <ThemeToggle variant="icon" />
+          {user ? (
+            <button
+              onClick={onProfileClick}
+              aria-label="Open profile"
+              className="w-9 h-9 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 border border-glider-mint dark:border-glider-mint/30 flex items-center justify-center font-display text-sm font-bold text-glider-olive dark:text-glider-mint"
+            >
+              {user.username.slice(0, 1).toUpperCase()}
+            </button>
+          ) : (
+            <button
+              onClick={onSignInClick}
+              aria-label="Sign in"
+              className="text-glider-black dark:text-glider-darkText p-1.5 rounded-lg hover:bg-glider-light dark:hover:bg-glider-darkPanel2"
+            >
+              {SignInIcon}
+            </button>
+          )}
           <button
             onClick={() => setOpen(true)}
             className="text-glider-black dark:text-glider-darkText p-1.5 rounded-lg hover:bg-glider-light dark:hover:bg-glider-darkPanel2"
@@ -192,6 +235,53 @@ export default function Sidebar({ onSubmitClick }: Props) {
 
         <div className="p-4 border-t border-glider-border dark:border-glider-darkBorder space-y-3">
           <ThemeToggle variant="pill" />
+
+          {user ? (
+            <button
+              onClick={() => {
+                onProfileClick()
+                setOpen(false)
+              }}
+              className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-glider-light dark:bg-glider-darkPanel2 border border-glider-border dark:border-glider-darkBorder hover:border-glider-olive/40 dark:hover:border-glider-mint/40 transition text-left"
+            >
+              <div className="w-9 h-9 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 border border-glider-mint dark:border-glider-mint/30 flex items-center justify-center font-display text-sm font-bold text-glider-olive dark:text-glider-mint shrink-0">
+                {user.username.slice(0, 1).toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-semibold text-glider-black dark:text-glider-darkText truncate">
+                  {user.username}
+                </div>
+                <div className="text-[10px] text-glider-gray dark:text-glider-darkMuted uppercase tracking-wider">
+                  {Object.keys(user.socials).length} social
+                  {Object.keys(user.socials).length === 1 ? '' : 's'} connected
+                </div>
+              </div>
+            </button>
+          ) : (
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => {
+                  onSignInClick()
+                  setOpen(false)
+                }}
+                className="btn-ghost text-xs py-2 px-2"
+              >
+                {SignInIcon}
+                Sign in
+              </button>
+              <button
+                onClick={() => {
+                  onSignUpClick()
+                  setOpen(false)
+                }}
+                className="btn-soft text-xs py-2 px-2"
+              >
+                {UserCircleIcon}
+                Sign up
+              </button>
+            </div>
+          )}
+
           <button
             onClick={() => {
               onSubmitClick()

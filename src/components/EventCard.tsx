@@ -70,24 +70,46 @@ interface Props {
   event: GliderEvent
   status: EventStatus
   layout?: 'grid' | 'list'
+  onOpen: (event: GliderEvent) => void
 }
 
-export default function EventCard({ event, status, layout = 'grid' }: Props) {
+export default function EventCard({ event, status, layout = 'grid', onOpen }: Props) {
   const CatIcon = CategoryIcon[event.category]
   const accent = event.accent || 'mint'
   const badge = statusBadge(status, event.startsAt)
 
+  const handleCardKey = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onOpen(event)
+    }
+  }
+
   if (layout === 'list') {
     return (
-      <article className="card p-4 flex flex-col sm:flex-row gap-4 hover:border-glider-olive/40 dark:hover:border-glider-mint/40 hover:shadow-card transition-all">
+      <article
+        role="button"
+        tabIndex={0}
+        onClick={() => onOpen(event)}
+        onKeyDown={handleCardKey}
+        className="card p-4 flex flex-col sm:flex-row gap-4 hover:border-glider-olive/40 dark:hover:border-glider-mint/40 hover:shadow-card transition-all cursor-pointer"
+      >
         <div
           className={`relative shrink-0 sm:w-44 h-28 rounded-xl overflow-hidden bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center`}
         >
-          <CatIcon
-            width={48}
-            height={48}
-            className={`${accentText[accent]} opacity-90`}
-          />
+          {event.imageUrl ? (
+            <img
+              src={event.imageUrl}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <CatIcon
+              width={48}
+              height={48}
+              className={`${accentText[accent]} opacity-90`}
+            />
+          )}
           <span
             className={`absolute top-2 left-2 chip ${badge.className} border-transparent text-[10px] font-bold tracking-wide`}
           >
@@ -127,32 +149,50 @@ export default function EventCard({ event, status, layout = 'grid' }: Props) {
               </span>
             )}
           </div>
-          <a
-            href={event.link}
-            target="_blank"
-            rel="noreferrer"
-            className={`mt-3 self-start ${
-              status === 'past' ? 'btn-ghost' : status === 'live' ? 'btn-primary' : 'btn-soft'
-            } text-xs py-1.5 px-3`}
-          >
-            {status === 'live' ? 'Join Live' : status === 'upcoming' ? 'Set Reminder' : 'View Recap'}
-            <ExternalIcon width={12} height={12} />
-          </a>
+          <div className="mt-3 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onOpen(event)
+              }}
+              className={`${
+                status === 'past' ? 'btn-ghost' : status === 'live' ? 'btn-primary' : 'btn-soft'
+              } text-xs py-1.5 px-3`}
+            >
+              {status === 'live' ? 'Join Live' : status === 'upcoming' ? 'View Details' : 'View Recap'}
+              <ExternalIcon width={12} height={12} />
+            </button>
+          </div>
         </div>
       </article>
     )
   }
 
   return (
-    <article className="card overflow-hidden flex flex-col hover:border-glider-olive/40 dark:hover:border-glider-mint/40 hover:shadow-card transition-all duration-200 group">
+    <article
+      role="button"
+      tabIndex={0}
+      onClick={() => onOpen(event)}
+      onKeyDown={handleCardKey}
+      className="card overflow-hidden flex flex-col hover:border-glider-olive/40 dark:hover:border-glider-mint/40 hover:shadow-card transition-all duration-200 group cursor-pointer"
+    >
       <div
         className={`relative h-36 bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center overflow-hidden`}
       >
-        <CatIcon
-          width={72}
-          height={72}
-          className={`${accentText[accent]} opacity-90 group-hover:scale-110 transition-transform duration-300`}
-        />
+        {event.imageUrl ? (
+          <img
+            src={event.imageUrl}
+            alt=""
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+        ) : (
+          <CatIcon
+            width={72}
+            height={72}
+            className={`${accentText[accent]} opacity-90 group-hover:scale-110 transition-transform duration-300`}
+          />
+        )}
         <span
           className={`absolute top-3 left-3 chip ${badge.className} border-transparent text-[10px] font-bold tracking-wide shadow-sm`}
         >
@@ -193,6 +233,11 @@ export default function EventCard({ event, status, layout = 'grid' }: Props) {
               <span className="truncate">{event.location}</span>
             </div>
           )}
+          {event.recurrence && event.recurrence.frequency !== 'none' && (
+            <div className="flex items-center gap-2 text-glider-olive dark:text-glider-mint text-xs">
+              ↻ Repeats {event.recurrence.frequency}
+            </div>
+          )}
         </div>
 
         {event.tags && event.tags.length > 0 && (
@@ -208,10 +253,12 @@ export default function EventCard({ event, status, layout = 'grid' }: Props) {
           </div>
         )}
 
-        <a
-          href={event.link}
-          target="_blank"
-          rel="noreferrer"
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onOpen(event)
+          }}
           className={`mt-auto ${
             status === 'past' ? 'btn-ghost' : status === 'live' ? 'btn-primary' : 'btn-soft'
           } text-sm`}
@@ -219,10 +266,10 @@ export default function EventCard({ event, status, layout = 'grid' }: Props) {
           {status === 'live'
             ? 'Join Now'
             : status === 'upcoming'
-              ? 'Set Reminder'
+              ? 'View Details'
               : 'View Recap'}
           <ExternalIcon width={14} height={14} />
-        </a>
+        </button>
       </div>
     </article>
   )

@@ -22,11 +22,11 @@ export default function Wordmark({
     <span className="inline-flex items-center gap-2.5">
       <Logo className={iconClassName} />
       <span
-        className={`font-display font-bold tracking-tight text-glider-black ${textClassName}`}
+        className={`font-display font-bold tracking-tight text-glider-black dark:text-glider-darkText ${textClassName}`}
       >
         Glider
         {!short && (
-          <span className="text-glider-olive"> Event Hub</span>
+          <span className="text-glider-olive dark:text-glider-mint"> Event Hub</span>
         )}
       </span>
     </span>

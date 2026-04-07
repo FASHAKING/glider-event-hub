@@ -55,7 +55,7 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-glider-black/30 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-glider-black/30 dark:bg-glider-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
       <form
@@ -65,17 +65,17 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="font-display text-2xl font-bold text-glider-black">
+            <h2 className="font-display text-2xl font-bold text-glider-black dark:text-glider-darkText">
               Submit an Event
             </h2>
-            <p className="text-sm text-glider-gray mt-0.5">
+            <p className="text-sm text-glider-gray dark:text-glider-darkMuted mt-0.5">
               Share a Glider community event with the hub.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-glider-gray hover:text-glider-black text-2xl leading-none w-8 h-8 rounded-full hover:bg-glider-light flex items-center justify-center"
+            className="text-glider-gray dark:text-glider-darkMuted hover:text-glider-black dark:hover:text-glider-darkText text-2xl leading-none w-8 h-8 rounded-full hover:bg-glider-light dark:hover:bg-glider-darkPanel2 flex items-center justify-center"
             aria-label="Close"
           >
             ×
@@ -191,7 +191,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-xs uppercase tracking-wider text-glider-gray font-medium mb-1.5">
+      <span className="block text-xs uppercase tracking-wider text-glider-gray dark:text-glider-darkMuted font-medium mb-1.5">
         {label}
       </span>
       {children}

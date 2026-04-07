@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Wordmark from './Wordmark'
+import ThemeToggle from './ThemeToggle'
 
 interface NavItem {
   label: string
@@ -64,6 +65,18 @@ interface Props {
   onSubmitClick: () => void
 }
 
+const navLink =
+  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ' +
+  'text-glider-gray dark:text-glider-darkMuted ' +
+  'hover:bg-glider-light dark:hover:bg-glider-darkPanel2 ' +
+  'hover:text-glider-black dark:hover:text-glider-darkText transition'
+
+const navIcon = 'text-glider-olive dark:text-glider-mint'
+
+const sectionLabel =
+  'px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider ' +
+  'text-glider-gray/70 dark:text-glider-darkMuted/70'
+
 export default function Sidebar({ onSubmitClick }: Props) {
   const [open, setOpen] = useState(false)
 
@@ -81,29 +94,34 @@ export default function Sidebar({ onSubmitClick }: Props) {
   return (
     <>
       {/* mobile top bar */}
-      <div className="lg:hidden sticky top-0 z-40 flex items-center justify-between bg-glider-bg/85 backdrop-blur border-b border-glider-border px-4 py-3">
+      <div className="lg:hidden sticky top-0 z-40 flex items-center justify-between bg-glider-bg/85 dark:bg-glider-darkBg/85 backdrop-blur border-b border-glider-border dark:border-glider-darkBorder px-4 py-3">
         <a href="#" className="flex items-center">
           <Wordmark iconClassName="w-8 h-8" textClassName="text-base" />
         </a>
-        <button
-          onClick={() => setOpen(true)}
-          className="text-glider-black p-1.5 rounded-lg hover:bg-glider-light"
-          aria-label="Open menu"
-        >
-          {MenuIcon}
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle variant="icon" />
+          <button
+            onClick={() => setOpen(true)}
+            className="text-glider-black dark:text-glider-darkText p-1.5 rounded-lg hover:bg-glider-light dark:hover:bg-glider-darkPanel2"
+            aria-label="Open menu"
+          >
+            {MenuIcon}
+          </button>
+        </div>
       </div>
 
       {/* mobile drawer overlay */}
       {open && (
         <div
-          className="lg:hidden fixed inset-0 z-50 bg-glider-black/30 backdrop-blur-sm"
+          className="lg:hidden fixed inset-0 z-50 bg-glider-black/40 dark:bg-glider-black/60 backdrop-blur-sm"
           onClick={() => setOpen(false)}
         />
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-screen w-64 z-50 bg-white border-r border-glider-border flex flex-col transition-transform duration-200
+        className={`fixed top-0 left-0 h-screen w-64 z-50 flex flex-col transition-transform duration-200
+          bg-white dark:bg-glider-darkPanel
+          border-r border-glider-border dark:border-glider-darkBorder
           ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
         <div className="flex items-center justify-between px-5 py-5">
@@ -111,7 +129,7 @@ export default function Sidebar({ onSubmitClick }: Props) {
             <Wordmark iconClassName="w-9 h-9" textClassName="text-base" />
           </a>
           <button
-            className="lg:hidden text-glider-gray p-1.5 rounded-lg hover:bg-glider-light"
+            className="lg:hidden text-glider-gray dark:text-glider-darkMuted p-1.5 rounded-lg hover:bg-glider-light dark:hover:bg-glider-darkPanel2"
             onClick={() => setOpen(false)}
             aria-label="Close menu"
           >
@@ -120,18 +138,16 @@ export default function Sidebar({ onSubmitClick }: Props) {
         </div>
 
         <nav className="px-3 flex-1 overflow-y-auto">
-          <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-glider-gray/70">
-            Explore
-          </p>
+          <p className={sectionLabel}>Explore</p>
           <ul className="space-y-0.5 mb-4">
             {items.map((item) => (
               <li key={item.label}>
                 <a
                   href={item.href}
                   onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-glider-gray hover:bg-glider-light hover:text-glider-black transition"
+                  className={navLink}
                 >
-                  <span className="text-glider-olive">{item.icon}</span>
+                  <span className={navIcon}>{item.icon}</span>
                   {item.label}
                 </a>
               </li>
@@ -142,17 +158,15 @@ export default function Sidebar({ onSubmitClick }: Props) {
                   onSubmitClick()
                   setOpen(false)
                 }}
-                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-glider-gray hover:bg-glider-light hover:text-glider-black transition"
+                className={`w-full ${navLink}`}
               >
-                <span className="text-glider-olive">{SendIcon}</span>
+                <span className={navIcon}>{SendIcon}</span>
                 Submit Event
               </button>
             </li>
           </ul>
 
-          <p className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-glider-gray/70">
-            Community
-          </p>
+          <p className={sectionLabel}>Community</p>
           <ul className="space-y-0.5">
             {links.map((item) => (
               <li key={item.label}>
@@ -160,9 +174,9 @@ export default function Sidebar({ onSubmitClick }: Props) {
                   href={item.href}
                   target={item.external ? '_blank' : undefined}
                   rel={item.external ? 'noreferrer' : undefined}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-glider-gray hover:bg-glider-light hover:text-glider-black transition"
+                  className={navLink}
                 >
-                  <span className="text-glider-olive">{item.icon}</span>
+                  <span className={navIcon}>{item.icon}</span>
                   {item.label}
                 </a>
               </li>
@@ -170,7 +184,8 @@ export default function Sidebar({ onSubmitClick }: Props) {
           </ul>
         </nav>
 
-        <div className="p-4 border-t border-glider-border">
+        <div className="p-4 border-t border-glider-border dark:border-glider-darkBorder space-y-3">
+          <ThemeToggle variant="pill" />
           <button
             onClick={() => {
               onSubmitClick()

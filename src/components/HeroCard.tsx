@@ -32,8 +32,8 @@ export default function HeroCard({
     <section className="px-5 lg:px-10 pt-8 lg:pt-12 pb-6">
       <div className="relative overflow-hidden card p-7 lg:p-12">
         {/* decorative blobs */}
-        <div className="pointer-events-none absolute -top-20 -right-16 w-72 h-72 rounded-full bg-glider-mint/40 blur-3xl" />
-        <div className="pointer-events-none absolute -bottom-24 -left-10 w-72 h-72 rounded-full bg-glider-sky/30 blur-3xl" />
+        <div className="pointer-events-none absolute -top-20 -right-16 w-72 h-72 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 blur-3xl" />
+        <div className="pointer-events-none absolute -bottom-24 -left-10 w-72 h-72 rounded-full bg-glider-sky/30 dark:bg-glider-sky/10 blur-3xl" />
 
         {/* 3D Glider mark, decorative */}
         <img
@@ -44,21 +44,21 @@ export default function HeroCard({
         />
 
         <div className="relative">
-          <span className="chip border-glider-mint bg-glider-mint/40 text-glider-olive">
+          <span className="chip border-glider-mint bg-glider-mint/40 text-glider-olive dark:border-glider-mint/40 dark:bg-glider-mint/15 dark:text-glider-mint">
             <SparkleIcon width={13} height={13} />
             Glider Community Event Hub
           </span>
 
-          <h1 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-glider-black leading-[1.05]">
+          <h1 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-glider-black dark:text-glider-darkText leading-[1.05]">
             Your single source of truth for everything happening across the{' '}
             <span className="relative inline-block">
-              <span className="relative z-10 text-glider-olive">Glider</span>
-              <span className="absolute inset-x-0 bottom-1 h-3 bg-glider-mint/70 rounded -z-0" />
+              <span className="relative z-10 text-glider-olive dark:text-glider-mint">Glider</span>
+              <span className="absolute inset-x-0 bottom-1 h-3 bg-glider-mint/70 dark:bg-glider-mint/25 rounded -z-0" />
             </span>{' '}
             ecosystem.
           </h1>
 
-          <p className="mt-4 max-w-2xl text-glider-gray text-base lg:text-lg">
+          <p className="mt-4 max-w-2xl text-glider-gray dark:text-glider-darkMuted text-base lg:text-lg">
             Track AMAs, quizzes, workshops, hackathons and meetups in real time.
             Never miss a moment.
           </p>
@@ -110,13 +110,13 @@ function Stat({
   mono?: boolean
 }) {
   return (
-    <div className="bg-white/80 backdrop-blur border border-glider-border rounded-xl px-4 py-3">
-      <div className="flex items-center gap-2 text-glider-gray text-xs font-medium uppercase tracking-wider">
-        <span className="text-glider-olive">{icon}</span>
+    <div className="bg-white/80 dark:bg-glider-darkPanel2/80 backdrop-blur border border-glider-border dark:border-glider-darkBorder rounded-xl px-4 py-3">
+      <div className="flex items-center gap-2 text-glider-gray dark:text-glider-darkMuted text-xs font-medium uppercase tracking-wider">
+        <span className="text-glider-olive dark:text-glider-mint">{icon}</span>
         {label}
       </div>
       <div
-        className={`mt-1 font-display font-bold text-glider-black ${
+        className={`mt-1 font-display font-bold text-glider-black dark:text-glider-darkText ${
           mono ? 'text-lg tabular-nums' : 'text-2xl'
         }`}
       >

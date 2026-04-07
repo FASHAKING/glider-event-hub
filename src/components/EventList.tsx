@@ -69,7 +69,7 @@ export default function EventList({ events }: { events: GliderEvent[] }) {
       {/* Filters bar */}
       <div className="flex flex-col gap-4 mb-7">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-1 p-1 bg-white border border-glider-border rounded-2xl shadow-soft w-fit">
+          <div className="flex items-center gap-1 p-1 bg-white dark:bg-glider-darkPanel border border-glider-border dark:border-glider-darkBorder rounded-2xl shadow-soft w-fit">
             {tabs.map((t) => {
               const count = counts[t.key]
               const active = tab === t.key
@@ -79,14 +79,14 @@ export default function EventList({ events }: { events: GliderEvent[] }) {
                   onClick={() => setTab(t.key)}
                   className={`px-4 py-1.5 rounded-xl text-sm font-medium transition-all ${
                     active
-                      ? 'bg-glider-olive text-white shadow-sm'
-                      : 'text-glider-gray hover:text-glider-black hover:bg-glider-light'
+                      ? 'bg-glider-olive text-white shadow-sm dark:bg-glider-mint dark:text-glider-darkBg'
+                      : 'text-glider-gray dark:text-glider-darkMuted hover:text-glider-black dark:hover:text-glider-darkText hover:bg-glider-light dark:hover:bg-glider-darkPanel2'
                   }`}
                 >
                   {t.label}
                   <span
                     className={`ml-1.5 text-xs ${
-                      active ? 'text-white/75' : 'text-glider-gray/60'
+                      active ? 'text-white/75 dark:text-glider-darkBg/70' : 'text-glider-gray/60 dark:text-glider-darkMuted/60'
                     }`}
                   >
                     {count}
@@ -101,7 +101,7 @@ export default function EventList({ events }: { events: GliderEvent[] }) {
               <SearchIcon
                 width={16}
                 height={16}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-glider-gray"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-glider-gray dark:text-glider-darkMuted"
               />
               <input
                 value={query}
@@ -124,11 +124,11 @@ export default function EventList({ events }: { events: GliderEvent[] }) {
                 <ChevronDownIcon
                   width={16}
                   height={16}
-                  className={`text-glider-gray transition ${catOpen ? 'rotate-180' : ''}`}
+                  className={`text-glider-gray dark:text-glider-darkMuted transition ${catOpen ? 'rotate-180' : ''}`}
                 />
               </button>
               {catOpen && (
-                <div className="absolute right-0 mt-1.5 z-20 bg-white border border-glider-border rounded-xl shadow-card py-1 min-w-[170px]">
+                <div className="absolute right-0 mt-1.5 z-20 bg-white dark:bg-glider-darkPanel border border-glider-border dark:border-glider-darkBorder rounded-xl shadow-card py-1 min-w-[170px]">
                   {(['All', ...allCategories] as const).map((c) => (
                     <button
                       key={c}
@@ -137,8 +137,10 @@ export default function EventList({ events }: { events: GliderEvent[] }) {
                         setCategory(c)
                         setCatOpen(false)
                       }}
-                      className={`w-full text-left px-3 py-2 text-sm hover:bg-glider-light ${
-                        category === c ? 'text-glider-olive font-semibold' : 'text-glider-black'
+                      className={`w-full text-left px-3 py-2 text-sm hover:bg-glider-light dark:hover:bg-glider-darkPanel2 ${
+                        category === c
+                          ? 'text-glider-olive dark:text-glider-mint font-semibold'
+                          : 'text-glider-black dark:text-glider-darkText'
                       }`}
                     >
                       {c === 'All' ? 'All Categories' : c}
@@ -149,14 +151,14 @@ export default function EventList({ events }: { events: GliderEvent[] }) {
             </div>
 
             {/* View toggle */}
-            <div className="flex items-center gap-1 p-1 bg-white border border-glider-border rounded-xl">
+            <div className="flex items-center gap-1 p-1 bg-white dark:bg-glider-darkPanel border border-glider-border dark:border-glider-darkBorder rounded-xl">
               <button
                 onClick={() => setView('list')}
                 aria-label="List view"
                 className={`p-1.5 rounded-lg transition ${
                   view === 'list'
-                    ? 'bg-glider-olive text-white'
-                    : 'text-glider-gray hover:bg-glider-light'
+                    ? 'bg-glider-olive text-white dark:bg-glider-mint dark:text-glider-darkBg'
+                    : 'text-glider-gray dark:text-glider-darkMuted hover:bg-glider-light dark:hover:bg-glider-darkPanel2'
                 }`}
               >
                 <ListIcon width={16} height={16} />
@@ -166,8 +168,8 @@ export default function EventList({ events }: { events: GliderEvent[] }) {
                 aria-label="Grid view"
                 className={`p-1.5 rounded-lg transition ${
                   view === 'grid'
-                    ? 'bg-glider-olive text-white'
-                    : 'text-glider-gray hover:bg-glider-light'
+                    ? 'bg-glider-olive text-white dark:bg-glider-mint dark:text-glider-darkBg'
+                    : 'text-glider-gray dark:text-glider-darkMuted hover:bg-glider-light dark:hover:bg-glider-darkPanel2'
                 }`}
               >
                 <GridIcon width={16} height={16} />
@@ -179,8 +181,8 @@ export default function EventList({ events }: { events: GliderEvent[] }) {
 
       {visible.length === 0 ? (
         <div className="card p-12 text-center">
-          <p className="text-glider-black font-medium">No events found</p>
-          <p className="text-glider-gray text-sm mt-1">
+          <p className="text-glider-black dark:text-glider-darkText font-medium">No events found</p>
+          <p className="text-glider-gray dark:text-glider-darkMuted text-sm mt-1">
             Try a different filter or check back soon.
           </p>
         </div>

@@ -1,3 +1,8 @@
+/**
+ * The preset category names that ship with the app. `GliderEvent.category`
+ * is widened to `string` so community submissions can provide custom values,
+ * but these presets still drive the category icon lookup and the sample data.
+ */
 export type EventCategory =
   | 'AMA'
   | 'Quiz'
@@ -5,6 +10,15 @@ export type EventCategory =
   | 'Meetup'
   | 'Hackathon'
   | 'Launch'
+
+export const PRESET_CATEGORIES: EventCategory[] = [
+  'AMA',
+  'Quiz',
+  'Workshop',
+  'Meetup',
+  'Hackathon',
+  'Launch',
+]
 
 export type EventAccent = 'mint' | 'olive' | 'sky'
 
@@ -24,7 +38,8 @@ export interface GliderEvent {
   host: string
   /** optional list of additional co-hosts */
   hosts?: string[]
-  category: EventCategory
+  /** Free-form category name. One of PRESET_CATEGORIES for built-ins. */
+  category: string
   /** ISO string */
   startsAt: string
   /** duration in minutes */

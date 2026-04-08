@@ -5,7 +5,7 @@ import {
   PinIcon,
   ExternalIcon,
   LiveDotIcon,
-  CategoryIcon,
+  getCategoryIcon,
 } from './Icons'
 
 const accentGradients: Record<EventAccent, string> = {
@@ -74,7 +74,7 @@ interface Props {
 }
 
 export default function EventCard({ event, status, layout = 'grid', onOpen }: Props) {
-  const CatIcon = CategoryIcon[event.category]
+  const CatIcon = getCategoryIcon(event.category)
   const accent = event.accent || 'mint'
   const badge = statusBadge(status, event.startsAt)
 

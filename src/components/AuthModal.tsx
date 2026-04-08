@@ -15,6 +15,7 @@ export default function AuthModal({ open, onClose, initialMode = 'signin' }: Pro
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -24,8 +25,6 @@ export default function AuthModal({ open, onClose, initialMode = 'signin' }: Pro
   }, [open, initialMode])
 
   if (!open) return null
-
-  const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

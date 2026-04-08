@@ -2,12 +2,15 @@ import { useState } from 'react'
 import Wordmark from './Wordmark'
 import ThemeToggle from './ThemeToggle'
 import { useAuth } from '../context/AuthContext'
+import type { AppView } from '../App'
 
 interface NavItem {
   label: string
   href: string
   external?: boolean
   icon: JSX.Element
+  /** Which in-app view this item maps to. Undefined = anchor scroll. */
+  view?: AppView
 }
 
 const HomeIcon = (
@@ -68,6 +71,8 @@ const CloseIcon = (
 )
 
 interface Props {
+  view: AppView
+  onNavigate: (view: AppView) => void
   onSubmitClick: () => void
   onSignInClick: () => void
   onSignUpClick: () => void
@@ -90,11 +95,20 @@ const SignInIcon = (
   </svg>
 )
 
-const navLink =
-  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium ' +
+const navLinkBase =
+  'flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition'
+
+const navLinkInactive =
   'text-glider-gray dark:text-glider-darkMuted ' +
   'hover:bg-glider-light dark:hover:bg-glider-darkPanel2 ' +
-  'hover:text-glider-black dark:hover:text-glider-darkText transition'
+  'hover:text-glider-black dark:hover:text-glider-darkText'
+
+const navLinkActive =
+  'bg-glider-mint/30 dark:bg-glider-mint/15 ' +
+  'text-glider-olive dark:text-glider-mint font-semibold ' +
+  'ring-1 ring-inset ring-glider-mint/60 dark:ring-glider-mint/30'
+
+const navLink = `${navLinkBase} ${navLinkInactive}`
 
 const navIcon = 'text-glider-olive dark:text-glider-mint'
 
@@ -103,6 +117,8 @@ const sectionLabel =
   'text-glider-gray/70 dark:text-glider-darkMuted/70'
 
 export default function Sidebar({
+  view,
+  onNavigate,
   onSubmitClick,
   onSignInClick,
   onSignUpClick,
@@ -112,8 +128,8 @@ export default function Sidebar({
   const { user } = useAuth()
 
   const items: NavItem[] = [
-    { label: 'Home', href: '#', icon: HomeIcon },
-    { label: 'Calendar', href: '#events', icon: CalIcon },
+    { label: 'Home', href: '#', icon: HomeIcon, view: 'home' },
+    { label: 'Calendar', href: '#calendar', icon: CalIcon, view: 'calendar' },
     { label: 'Leaderboard', href: '#leaderboard', icon: TrophyIcon },
     { label: 'Suggestions', href: '#about', icon: BulbIcon },
   ]
@@ -189,18 +205,31 @@ export default function Sidebar({
         <nav className="px-3 flex-1 overflow-y-auto">
           <p className={sectionLabel}>Explore</p>
           <ul className="space-y-0.5 mb-4">
-            {items.map((item) => (
-              <li key={item.label}>
-                <a
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={navLink}
-                >
-                  <span className={navIcon}>{item.icon}</span>
-                  {item.label}
-                </a>
-              </li>
-            ))}
+            {items.map((item) => {
+              const isActive = !!item.view && item.view === view
+              const className = `${navLinkBase} ${
+                isActive ? navLinkActive : navLinkInactive
+              }`
+              return (
+                <li key={item.label}>
+                  <a
+                    href={item.href}
+                    aria-current={isActive ? 'page' : undefined}
+                    onClick={(e) => {
+                      if (item.view) {
+                        e.preventDefault()
+                        onNavigate(item.view)
+                      }
+                      setOpen(false)
+                    }}
+                    className={className}
+                  >
+                    <span className={navIcon}>{item.icon}</span>
+                    {item.label}
+                  </a>
+                </li>
+              )
+            })}
             <li>
               <button
                 onClick={() => {

@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import LiveBanner from './components/LiveBanner'
 import HeroCard from './components/HeroCard'
 import EventList from './components/EventList'
+import CalendarPage from './components/CalendarPage'
 import SubmitEventModal from './components/SubmitEventModal'
 import EventDetailModal from './components/EventDetailModal'
 import AuthModal from './components/AuthModal'
@@ -18,6 +19,8 @@ const STORAGE_KEY = 'glider-event-hub:user-events'
 // rough community member counter for the hero card stat
 const COMMUNITY_MEMBERS = 1248
 
+export type AppView = 'home' | 'calendar'
+
 function AppInner() {
   const { user } = useAuth()
   const [userEvents, setUserEvents] = useState<GliderEvent[]>(() => {
@@ -28,6 +31,7 @@ function AppInner() {
       return []
     }
   })
+  const [view, setView] = useState<AppView>('home')
   const [submitOpen, setSubmitOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
@@ -71,6 +75,8 @@ function AppInner() {
   return (
     <div className="min-h-screen flex flex-col lg:pl-64">
       <Sidebar
+        view={view}
+        onNavigate={setView}
         onSubmitClick={() => setSubmitOpen(true)}
         onSignInClick={() => openAuth('signin')}
         onSignUpClick={() => openAuth('signup')}
@@ -80,13 +86,23 @@ function AppInner() {
       {liveEvent && <LiveBanner event={liveEvent} />}
 
       <main className="flex-1">
-        <HeroCard
-          total={allEvents.length}
-          members={COMMUNITY_MEMBERS}
-          nextEvent={nextEvent}
-          onSubmitClick={() => setSubmitOpen(true)}
-        />
-        <EventList events={allEvents} onOpenEvent={setActiveEvent} />
+        {view === 'home' ? (
+          <>
+            <HeroCard
+              total={allEvents.length}
+              members={COMMUNITY_MEMBERS}
+              nextEvent={nextEvent}
+              onSubmitClick={() => setSubmitOpen(true)}
+            />
+            <EventList events={allEvents} onOpenEvent={setActiveEvent} />
+          </>
+        ) : (
+          <CalendarPage
+            events={allEvents}
+            onOpenEvent={setActiveEvent}
+            onBack={() => setView('home')}
+          />
+        )}
       </main>
 
       <Footer />

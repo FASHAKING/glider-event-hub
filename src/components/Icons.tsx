@@ -156,10 +156,7 @@ const LaunchIcon = (p: IconProps) => (
   </svg>
 )
 
-export const CategoryIcon: Record<
-  EventCategory,
-  (p: IconProps) => JSX.Element
-> = {
+const CATEGORY_ICONS: Record<EventCategory, (p: IconProps) => JSX.Element> = {
   AMA: AMAIcon,
   Quiz: QuizIcon,
   Workshop: WorkshopIcon,
@@ -167,3 +164,21 @@ export const CategoryIcon: Record<
   Hackathon: HackathonIcon,
   Launch: LaunchIcon,
 }
+
+/** Generic fallback for user-submitted categories outside the preset list. */
+const GenericCategoryIcon = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M4 7h16M4 12h16M4 17h10" />
+  </svg>
+)
+
+/**
+ * Icon lookup that accepts any string so user-submitted categories don't
+ * crash the render. Unknown categories fall back to a generic glyph.
+ */
+export function getCategoryIcon(
+  category: string,
+): (p: IconProps) => JSX.Element {
+  return CATEGORY_ICONS[category as EventCategory] ?? GenericCategoryIcon
+}
+

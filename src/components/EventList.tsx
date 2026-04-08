@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import type { GliderEvent, EventStatus, EventCategory } from '../types'
-import { getEventStatus } from '../types'
+import type { GliderEvent, EventStatus } from '../types'
+import { getEventStatus, PRESET_CATEGORIES } from '../types'
 import EventCard from './EventCard'
 import { SearchIcon, GridIcon, ListIcon, ChevronDownIcon } from './Icons'
 
@@ -13,15 +13,6 @@ const tabs: { key: Tab; label: string }[] = [
   { key: 'past', label: 'Past' },
 ]
 
-const allCategories: EventCategory[] = [
-  'AMA',
-  'Quiz',
-  'Workshop',
-  'Meetup',
-  'Hackathon',
-  'Launch',
-]
-
 interface EventListProps {
   events: GliderEvent[]
   onOpenEvent: (event: GliderEvent) => void
@@ -31,13 +22,22 @@ export default function EventList({ events, onOpenEvent }: EventListProps) {
   const [tab, setTab] = useState<Tab>('all')
   const [query, setQuery] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
-  const [category, setCategory] = useState<EventCategory | 'All'>('All')
+  const [category, setCategory] = useState<string>('All')
   const [catOpen, setCatOpen] = useState(false)
 
   const withStatus = useMemo(
     () => events.map((e) => ({ event: e, status: getEventStatus(e) })),
     [events],
   )
+
+  // Pull every category that appears in the event list, union it with the
+  // built-in presets so the filter shows them even if no event uses them yet,
+  // and deduplicate (case-sensitive since that's how we compare downstream).
+  const allCategories = useMemo(() => {
+    const seen = new Set<string>(PRESET_CATEGORIES)
+    for (const e of events) if (e.category) seen.add(e.category)
+    return Array.from(seen)
+  }, [events])
 
   const counts = useMemo(() => {
     const c: Record<Tab, number> = { all: events.length, live: 0, upcoming: 0, past: 0 }

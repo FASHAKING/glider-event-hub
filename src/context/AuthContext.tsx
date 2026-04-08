@@ -108,6 +108,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Whenever a user signs in, pull their reminder bookmarks from Supabase so
+  // the reminder cron + the UI agree. Signed-out state leaves existing local
+  // reminders untouched (they're still rendered in the profile modal history).
+  useEffect(() => {
+    const userId = session?.user?.id
+    if (!userId) return
+    let cancelled = false
+    supabase
+      .from('event_reminders')
+      .select('event_id')
+      .eq('user_id', userId)
+      .then(({ data, error }) => {
+        if (cancelled) return
+        if (error) {
+          // Table may not exist yet if the migration hasn't been run.
+          // eslint-disable-next-line no-console
+          console.warn('[reminders] could not load from Supabase:', error.message)
+          return
+        }
+        const ids = (data ?? []).map((r) => r.event_id as string)
+        setProfiles((prev) => {
+          const current =
+            prev[userId] ??
+            emptyProfile(session?.user?.email ?? '', session?.user?.email?.split('@')[0] ?? 'glider')
+          return {
+            ...prev,
+            [userId]: { ...current, remindersFor: ids },
+          }
+        })
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [session?.user?.id])
+
   const user = useMemo<UserAccount | null>(() => {
     if (!session?.user) return null
     const authUser = session.user
@@ -257,15 +292,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const toggleReminder = useCallback(
     (eventId: string) => {
       if (!user) return
-      updateProfile(user.id, (p) => {
-        const has = p.remindersFor.includes(eventId)
-        return {
-          ...p,
-          remindersFor: has
-            ? p.remindersFor.filter((id) => id !== eventId)
-            : [...p.remindersFor, eventId],
+      const has = user.remindersFor.includes(eventId)
+
+      // Optimistic local update so the UI flips immediately.
+      updateProfile(user.id, (p) => ({
+        ...p,
+        remindersFor: has
+          ? p.remindersFor.filter((id) => id !== eventId)
+          : [...p.remindersFor, eventId],
+      }))
+
+      // Persist to Supabase so the reminder cron can pick it up. Failures are
+      // non-fatal for the UI — we log and leave the optimistic state in place.
+      const persist = async () => {
+        try {
+          if (has) {
+            const { error } = await supabase
+              .from('event_reminders')
+              .delete()
+              .eq('user_id', user.id)
+              .eq('event_id', eventId)
+            if (error) throw error
+          } else {
+            const { error } = await supabase
+              .from('event_reminders')
+              .insert({ user_id: user.id, event_id: eventId })
+            if (error) throw error
+          }
+        } catch (e) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            '[reminders] could not sync to Supabase:',
+            e instanceof Error ? e.message : e,
+          )
         }
-      })
+      }
+      void persist()
     },
     [user, updateProfile],
   )

@@ -6,27 +6,59 @@ import {
   useMemo,
   useState,
 } from 'react'
+import type { Session } from '@supabase/supabase-js'
 import type {
   SocialConnection,
   SocialPlatform,
   UserAccount,
 } from '../types'
-
-const ACCOUNTS_KEY = 'glider-event-hub:accounts'
-const SESSION_KEY = 'glider-event-hub:session'
+import { supabase } from '../lib/supabase'
 
 /**
- * NOTE: this is a fully client-side auth implementation for the demo.
- * Passwords are stored as a trivial hash in localStorage – good enough to
- * keep this PR self-contained, but obviously not for production use.
+ * Authentication is backed by Supabase Auth. Profile data that isn't part of
+ * the auth session (username, connected socials, reminder bookmarks) is still
+ * kept in localStorage, keyed by the Supabase user id — this keeps the change
+ * surgical and avoids needing an extra `profiles` table just to log in.
  */
-function trivialHash(input: string): string {
-  let h = 0
-  for (let i = 0; i < input.length; i++) {
-    h = (h << 5) - h + input.charCodeAt(i)
-    h |= 0
+
+const PROFILES_KEY = 'glider-event-hub:profiles'
+
+interface StoredProfile {
+  username: string
+  email: string
+  createdAt: string
+  socials: Record<string, SocialConnection>
+  remindersFor: string[]
+}
+
+type ProfileMap = Record<string, StoredProfile>
+
+function loadProfiles(): ProfileMap {
+  try {
+    const raw = localStorage.getItem(PROFILES_KEY)
+    return raw ? (JSON.parse(raw) as ProfileMap) : {}
+  } catch {
+    return {}
   }
-  return `h${h}`
+}
+
+function saveProfiles(map: ProfileMap) {
+  localStorage.setItem(PROFILES_KEY, JSON.stringify(map))
+}
+
+function emptyProfile(email: string, username: string): StoredProfile {
+  return {
+    username,
+    email,
+    createdAt: new Date().toISOString(),
+    socials: {},
+    remindersFor: [],
+  }
+}
+
+interface AuthResult {
+  ok: boolean
+  error?: string
 }
 
 interface AuthState {
@@ -35,12 +67,9 @@ interface AuthState {
     username: string,
     email: string,
     password: string,
-  ) => { ok: true } | { ok: false; error: string }
-  signIn: (
-    email: string,
-    password: string,
-  ) => { ok: true } | { ok: false; error: string }
-  signOut: () => void
+  ) => Promise<AuthResult>
+  signIn: (email: string, password: string) => Promise<AuthResult>
+  signOut: () => Promise<void>
   connectSocial: (
     platform: SocialPlatform,
     handle: string,
@@ -53,91 +82,127 @@ interface AuthState {
 
 const AuthContext = createContext<AuthState | undefined>(undefined)
 
-function loadAccounts(): UserAccount[] {
-  try {
-    const raw = localStorage.getItem(ACCOUNTS_KEY)
-    return raw ? (JSON.parse(raw) as UserAccount[]) : []
-  } catch {
-    return []
-  }
-}
-
-function saveAccounts(accounts: UserAccount[]) {
-  localStorage.setItem(ACCOUNTS_KEY, JSON.stringify(accounts))
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [accounts, setAccounts] = useState<UserAccount[]>(() => loadAccounts())
-  const [sessionId, setSessionId] = useState<string | null>(() => {
-    try {
-      return localStorage.getItem(SESSION_KEY)
-    } catch {
-      return null
+  const [session, setSession] = useState<Session | null>(null)
+  const [profiles, setProfiles] = useState<ProfileMap>(() => loadProfiles())
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    saveProfiles(profiles)
+  }, [profiles])
+
+  // Hydrate session on mount and subscribe to auth changes.
+  useEffect(() => {
+    let active = true
+    supabase.auth.getSession().then(({ data }) => {
+      if (!active) return
+      setSession(data.session)
+      setReady(true)
+    })
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+      setSession(s)
+    })
+    return () => {
+      active = false
+      sub.subscription.unsubscribe()
     }
-  })
+  }, [])
 
-  useEffect(() => {
-    saveAccounts(accounts)
-  }, [accounts])
-
-  useEffect(() => {
-    if (sessionId) localStorage.setItem(SESSION_KEY, sessionId)
-    else localStorage.removeItem(SESSION_KEY)
-  }, [sessionId])
-
-  const user = useMemo(
-    () => accounts.find((a) => a.id === sessionId) || null,
-    [accounts, sessionId],
-  )
-
-  const updateUser = useCallback(
-    (updater: (u: UserAccount) => UserAccount) => {
-      setAccounts((prev) =>
-        prev.map((a) => (a.id === sessionId ? updater(a) : a)),
+  const user = useMemo<UserAccount | null>(() => {
+    if (!session?.user) return null
+    const authUser = session.user
+    const profile =
+      profiles[authUser.id] ??
+      emptyProfile(
+        authUser.email ?? '',
+        (authUser.user_metadata?.username as string) ??
+          authUser.email?.split('@')[0] ??
+          'glider',
       )
+    return {
+      id: authUser.id,
+      username: profile.username,
+      email: profile.email || authUser.email || '',
+      passwordHash: '',
+      createdAt: profile.createdAt,
+      socials: profile.socials,
+      remindersFor: profile.remindersFor,
+    }
+  }, [session, profiles])
+
+  const updateProfile = useCallback(
+    (userId: string, updater: (p: StoredProfile) => StoredProfile) => {
+      setProfiles((prev) => {
+        const current =
+          prev[userId] ?? emptyProfile(user?.email ?? '', user?.username ?? '')
+        return { ...prev, [userId]: updater(current) }
+      })
     },
-    [sessionId],
+    [user],
   )
 
   const signUp = useCallback<AuthState['signUp']>(
-    (username, email, password) => {
+    async (username, email, password) => {
       const cleanEmail = email.trim().toLowerCase()
-      if (!username.trim() || !cleanEmail || !password)
+      const cleanUsername = username.trim()
+      if (!cleanUsername || !cleanEmail || !password)
         return { ok: false, error: 'All fields are required.' }
       if (password.length < 6)
         return { ok: false, error: 'Password must be at least 6 characters.' }
-      if (accounts.some((a) => a.email.toLowerCase() === cleanEmail))
-        return { ok: false, error: 'An account with that email already exists.' }
-      const newUser: UserAccount = {
-        id: `u-${Date.now()}`,
-        username: username.trim(),
+
+      const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
-        passwordHash: trivialHash(password),
-        createdAt: new Date().toISOString(),
-        socials: {},
-        remindersFor: [],
+        password,
+        options: { data: { username: cleanUsername } },
+      })
+      if (error) return { ok: false, error: error.message }
+      const newUserId = data.user?.id
+      if (newUserId) {
+        setProfiles((prev) => ({
+          ...prev,
+          [newUserId]: emptyProfile(cleanEmail, cleanUsername),
+        }))
       }
-      setAccounts((prev) => [...prev, newUser])
-      setSessionId(newUser.id)
+      if (!data.session) {
+        return {
+          ok: false,
+          error:
+            'Account created — check your inbox to confirm your email, then sign in.',
+        }
+      }
       return { ok: true }
     },
-    [accounts],
+    [],
   )
 
-  const signIn = useCallback<AuthState['signIn']>(
-    (email, password) => {
-      const cleanEmail = email.trim().toLowerCase()
-      const found = accounts.find((a) => a.email.toLowerCase() === cleanEmail)
-      if (!found) return { ok: false, error: 'No account with that email.' }
-      if (found.passwordHash !== trivialHash(password))
-        return { ok: false, error: 'Incorrect password.' }
-      setSessionId(found.id)
-      return { ok: true }
-    },
-    [accounts],
-  )
+  const signIn = useCallback<AuthState['signIn']>(async (email, password) => {
+    const cleanEmail = email.trim().toLowerCase()
+    if (!cleanEmail || !password)
+      return { ok: false, error: 'Email and password are required.' }
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: cleanEmail,
+      password,
+    })
+    if (error) return { ok: false, error: error.message }
+    const signedInId = data.user?.id
+    if (signedInId) {
+      setProfiles((prev) => {
+        if (prev[signedInId]) return prev
+        const username =
+          (data.user?.user_metadata?.username as string) ??
+          cleanEmail.split('@')[0]
+        return {
+          ...prev,
+          [signedInId]: emptyProfile(cleanEmail, username),
+        }
+      })
+    }
+    return { ok: true }
+  }, [])
 
-  const signOut = useCallback(() => setSessionId(null), [])
+  const signOut = useCallback(async () => {
+    await supabase.auth.signOut()
+  }, [])
 
   const connectSocial = useCallback<AuthState['connectSocial']>(
     (platform, handle) => {
@@ -150,56 +215,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         connectedAt: new Date().toISOString(),
         notifications: true,
       }
-      updateUser((u) => ({
-        ...u,
-        socials: { ...u.socials, [platform]: conn },
+      updateProfile(user.id, (p) => ({
+        ...p,
+        socials: { ...p.socials, [platform]: conn },
       }))
       return { ok: true }
     },
-    [user, updateUser],
+    [user, updateProfile],
   )
 
   const disconnectSocial = useCallback(
     (platform: SocialPlatform) => {
-      updateUser((u) => {
-        const next = { ...u.socials }
+      if (!user) return
+      updateProfile(user.id, (p) => {
+        const next = { ...p.socials }
         delete next[platform]
-        return { ...u, socials: next }
+        return { ...p, socials: next }
       })
     },
-    [updateUser],
+    [user, updateProfile],
   )
 
   const toggleSocialNotifications = useCallback(
     (platform: SocialPlatform) => {
-      updateUser((u) => {
-        const current = u.socials[platform]
-        if (!current) return u
+      if (!user) return
+      updateProfile(user.id, (p) => {
+        const current = p.socials[platform]
+        if (!current) return p
         return {
-          ...u,
+          ...p,
           socials: {
-            ...u.socials,
+            ...p.socials,
             [platform]: { ...current, notifications: !current.notifications },
           },
         }
       })
     },
-    [updateUser],
+    [user, updateProfile],
   )
 
   const toggleReminder = useCallback(
     (eventId: string) => {
-      updateUser((u) => {
-        const has = u.remindersFor.includes(eventId)
+      if (!user) return
+      updateProfile(user.id, (p) => {
+        const has = p.remindersFor.includes(eventId)
         return {
-          ...u,
+          ...p,
           remindersFor: has
-            ? u.remindersFor.filter((id) => id !== eventId)
-            : [...u.remindersFor, eventId],
+            ? p.remindersFor.filter((id) => id !== eventId)
+            : [...p.remindersFor, eventId],
         }
       })
     },
-    [updateUser],
+    [user, updateProfile],
   )
 
   const hasReminder = useCallback(
@@ -218,6 +286,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     toggleReminder,
     hasReminder,
   }
+
+  // Keep the provider behavior unchanged even before the session has hydrated;
+  // `user` will simply be null during that brief window.
+  void ready
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

@@ -4,6 +4,8 @@ import type {
   GliderEvent,
   RecurrenceFrequency,
 } from '../types'
+import { supabase } from '../lib/supabase'
+import { useAuth } from '../context/AuthContext'
 
 interface Props {
   open: boolean
@@ -42,6 +44,7 @@ const recurrences: { value: RecurrenceFrequency; label: string }[] = [
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024 // 1.5 MB
 
 export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
+  const { user } = useAuth()
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [hostsCsv, setHostsCsv] = useState('')
@@ -54,6 +57,8 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
   const [imageError, setImageError] = useState<string | null>(null)
   const [recurrence, setRecurrence] = useState<RecurrenceFrequency>('none')
   const [occurrences, setOccurrences] = useState<number>(4)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!open) return null
@@ -71,6 +76,7 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
     setImageError(null)
     setRecurrence('none')
     setOccurrences(4)
+    setSubmitError(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -89,8 +95,13 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
     reader.readAsDataURL(file)
   }
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
+    setSubmitError(null)
+    if (!user) {
+      setSubmitError('You need to be signed in to submit an event.')
+      return
+    }
     const hosts = hostsCsv
       .split(',')
       .map((h) => h.trim())
@@ -98,26 +109,64 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
       .slice(0, 3)
     if (!title || hosts.length === 0 || !startsAt || !link || !platform) return
 
-    const event: GliderEvent = {
-      id: `user-${Date.now()}`,
-      title,
-      description,
-      host: hosts[0],
-      hosts: hosts.slice(1),
-      category,
-      startsAt: new Date(startsAt).toISOString(),
-      durationMinutes: Number(durationMinutes) || 60,
-      link,
-      location: platform,
-      tags: ['community-submitted'],
-      imageUrl: imageDataUrl || undefined,
-      recurrence:
-        recurrence === 'none'
-          ? undefined
-          : { frequency: recurrence, occurrences: Math.max(1, occurrences) },
+    const startsAtIso = new Date(startsAt).toISOString()
+    const duration = Number(durationMinutes) || 60
+    const recurrencePayload =
+      recurrence === 'none'
+        ? null
+        : { frequency: recurrence, occurrences: Math.max(1, occurrences) }
+
+    setSubmitting(true)
+    try {
+      // Snake_case row matching the `events` table schema.
+      const row = {
+        title,
+        description,
+        host: hosts[0],
+        hosts: hosts.slice(1),
+        category,
+        starts_at: startsAtIso,
+        duration_minutes: duration,
+        link,
+        location: platform,
+        image_url: imageDataUrl,
+        tags: ['community-submitted'],
+        recurrence: recurrencePayload,
+      }
+
+      const { data, error } = await supabase
+        .from('events')
+        .insert(row)
+        .select('id')
+        .single()
+
+      if (error) {
+        setSubmitError(error.message)
+        return
+      }
+
+      const event: GliderEvent = {
+        id: data?.id ? String(data.id) : `user-${Date.now()}`,
+        title,
+        description,
+        host: hosts[0],
+        hosts: hosts.slice(1),
+        category,
+        startsAt: startsAtIso,
+        durationMinutes: duration,
+        link,
+        location: platform,
+        tags: ['community-submitted'],
+        imageUrl: imageDataUrl || undefined,
+        recurrence: recurrencePayload ?? undefined,
+      }
+      onSubmit(event)
+      reset()
+    } catch (e) {
+      setSubmitError(e instanceof Error ? e.message : 'Could not submit event.')
+    } finally {
+      setSubmitting(false)
     }
-    onSubmit(event)
-    reset()
   }
 
   return (
@@ -312,12 +361,27 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
           </Field>
         </div>
 
+        {submitError && (
+          <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl px-3 py-2">
+            {submitError}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onClose} className="btn-ghost text-sm">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="btn-ghost text-sm disabled:opacity-60"
+          >
             Cancel
           </button>
-          <button type="submit" className="btn-primary text-sm">
-            Submit Event
+          <button
+            type="submit"
+            disabled={submitting}
+            className="btn-primary text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            {submitting ? 'Submitting…' : 'Submit Event'}
           </button>
         </div>
       </form>

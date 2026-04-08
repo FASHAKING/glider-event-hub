@@ -8,27 +8,59 @@ body,
   min-height: 100%;
 }
 
+/* Light theme background */
 body {
   background:
-    radial-gradient(1200px 600px at 10% -10%, rgba(139, 92, 246, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 90% 0%, rgba(94, 234, 212, 0.15), transparent 60%),
-    #070b14;
+    radial-gradient(1100px 520px at 8% -10%, rgba(168, 224, 209, 0.55), transparent 60%),
+    radial-gradient(900px 460px at 92% -10%, rgba(163, 200, 224, 0.45), transparent 60%),
+    #F5F5F7;
+  color: #000000;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* Dark theme background */
+html.dark body {
+  background:
+    radial-gradient(1100px 520px at 8% -10%, rgba(79, 127, 88, 0.30), transparent 60%),
+    radial-gradient(900px 460px at 92% -10%, rgba(163, 200, 224, 0.18), transparent 60%),
+    #0B0F14;
+  color: #F5F5F7;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.01em;
 }
 
 @layer components {
   .card {
-    @apply bg-glide-panel/80 backdrop-blur border border-glide-border rounded-2xl;
+    @apply bg-white dark:bg-glider-darkPanel
+      border border-glider-border dark:border-glider-darkBorder
+      rounded-2xl shadow-soft;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-colors;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200;
   }
   .btn-primary {
-    @apply btn bg-glide-accent text-glide-bg hover:bg-glide-accent/90;
+    @apply btn bg-glider-olive text-white hover:bg-glider-olive/90 shadow-sm hover:shadow-glow;
+  }
+  .btn-soft {
+    @apply btn bg-glider-mint text-glider-olive hover:bg-glider-mint/80
+      dark:bg-glider-mint/20 dark:text-glider-mint dark:hover:bg-glider-mint/30;
   }
   .btn-ghost {
-    @apply btn border border-glide-border text-white/90 hover:bg-white/5;
+    @apply btn bg-white border border-glider-border text-glider-text hover:border-glider-olive/40 hover:bg-glider-light
+      dark:bg-glider-darkPanel dark:border-glider-darkBorder dark:text-glider-darkText
+      dark:hover:border-glider-mint/40 dark:hover:bg-glider-darkPanel2;
   }
   .chip {
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border;
+  }
+  .input {
+    @apply w-full bg-white border border-glider-border rounded-xl px-3.5 py-2.5 text-sm text-glider-text placeholder:text-glider-muted/70 outline-none focus:border-glider-olive focus:ring-2 focus:ring-glider-mint/50 transition
+      dark:bg-glider-darkPanel dark:border-glider-darkBorder dark:text-glider-darkText
+      dark:placeholder:text-glider-darkMuted/60 dark:focus:border-glider-mint dark:focus:ring-glider-mint/30;
   }
 }

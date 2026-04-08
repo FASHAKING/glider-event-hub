@@ -1,25 +1,34 @@
 import { useEffect, useMemo, useState } from 'react'
-import Header from './components/Header'
-import Hero from './components/Hero'
+import Sidebar from './components/Sidebar'
+import LiveBanner from './components/LiveBanner'
+import HeroCard from './components/HeroCard'
 import EventList from './components/EventList'
 import SubmitEventModal from './components/SubmitEventModal'
+import EventDetailModal from './components/EventDetailModal'
+import AuthModal from './components/AuthModal'
+import ProfileModal from './components/ProfileModal'
 import Footer from './components/Footer'
-import { sampleEvents } from './data/events'
-import type { GlideEvent } from './types'
-import { getEventStatus } from './types'
+import type { GliderEvent } from './types'
+import { expandRecurringEvents, getEventStatus } from './types'
+import { AuthProvider, useAuth } from './context/AuthContext'
+import { useLiveEventNotifications } from './hooks/useLiveEventNotifications'
+import { useEvents } from './hooks/useEvents'
+import { isSupabaseConfigured } from './lib/supabase'
 
-const STORAGE_KEY = 'glide-event-hub:user-events'
+// rough community member counter for the hero card stat
+const COMMUNITY_MEMBERS = 1248
+const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as
+  | string
+  | undefined
 
-export default function App() {
-  const [userEvents, setUserEvents] = useState<GlideEvent[]>(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      return raw ? (JSON.parse(raw) as GlideEvent[]) : []
-    } catch {
-      return []
-    }
-  })
-  const [modalOpen, setModalOpen] = useState(false)
+function AppInner() {
+  const { user } = useAuth()
+  const { events, submitEvent } = useEvents(user?.id || null)
+  const [submitOpen, setSubmitOpen] = useState(false)
+  const [authOpen, setAuthOpen] = useState(false)
+  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [activeEvent, setActiveEvent] = useState<GliderEvent | null>(null)
   const [, forceTick] = useState(0)
 
   // Re-evaluate live/upcoming/past every 30s
@@ -28,33 +37,106 @@ export default function App() {
     return () => clearInterval(id)
   }, [])
 
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userEvents))
-  }, [userEvents])
+  const allEvents = useMemo(() => expandRecurringEvents(events), [events])
 
-  const allEvents = useMemo(
-    () => [...sampleEvents, ...userEvents],
-    [userEvents],
-  )
+  // notification dispatcher hook
+  useLiveEventNotifications(allEvents)
 
-  const liveCount = allEvents.filter((e) => getEventStatus(e) === 'live').length
+  const liveEvent = allEvents.find((e) => getEventStatus(e) === 'live')
+
+  const nextEvent = useMemo(() => {
+    return allEvents
+      .filter((e) => getEventStatus(e) === 'upcoming')
+      .sort(
+        (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
+      )[0]
+  }, [allEvents])
+
+  const openAuth = (mode: 'signin' | 'signup' = 'signin') => {
+    setAuthMode(mode)
+    setAuthOpen(true)
+  }
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <Header onSubmitClick={() => setModalOpen(true)} />
+    <div className="min-h-screen flex flex-col lg:pl-64">
+      <Sidebar
+        onSubmitClick={() => {
+          if (isSupabaseConfigured && !user) {
+            openAuth('signup')
+            return
+          }
+          setSubmitOpen(true)
+        }}
+        onSignInClick={() => openAuth('signin')}
+        onSignUpClick={() => openAuth('signup')}
+        onProfileClick={() => setProfileOpen(true)}
+      />
+
+      {!isSupabaseConfigured && (
+        <div className="bg-amber-100 dark:bg-amber-500/20 border-b border-amber-200 dark:border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs px-5 py-1.5 text-center">
+          Demo mode — Supabase not configured. Set <code>VITE_SUPABASE_URL</code> and
+          <code className="ml-1">VITE_SUPABASE_ANON_KEY</code> in <code>.env.local</code> to enable real accounts and notifications.
+        </div>
+      )}
+
+      {liveEvent && <LiveBanner event={liveEvent} />}
+
       <main className="flex-1">
-        <Hero total={allEvents.length} live={liveCount} />
-        <EventList events={allEvents} />
+        <HeroCard
+          total={allEvents.length}
+          members={COMMUNITY_MEMBERS}
+          nextEvent={nextEvent}
+          onSubmitClick={() => {
+            if (isSupabaseConfigured && !user) {
+              openAuth('signup')
+              return
+            }
+            setSubmitOpen(true)
+          }}
+        />
+        <EventList events={allEvents} onOpenEvent={setActiveEvent} />
       </main>
+
       <Footer />
+
       <SubmitEventModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onSubmit={(e) => {
-          setUserEvents((prev) => [...prev, e])
-          setModalOpen(false)
+        open={submitOpen}
+        onClose={() => setSubmitOpen(false)}
+        onSubmit={async (payload) => {
+          const result = await submitEvent(payload)
+          if (result.ok) {
+            setSubmitOpen(false)
+            return { ok: true as const }
+          }
+          return { ok: false as const, error: result.error }
         }}
       />
+
+      <EventDetailModal
+        event={activeEvent}
+        onClose={() => setActiveEvent(null)}
+        onRequireAuth={() => openAuth('signup')}
+      />
+
+      <AuthModal
+        open={authOpen}
+        onClose={() => setAuthOpen(false)}
+        initialMode={authMode}
+      />
+
+      <ProfileModal
+        open={profileOpen && !!user}
+        onClose={() => setProfileOpen(false)}
+        telegramBotUsername={TELEGRAM_BOT_USERNAME}
+      />
     </div>
+  )
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppInner />
+    </AuthProvider>
   )
 }

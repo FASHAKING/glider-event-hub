@@ -1,25 +1,19 @@
+import Wordmark from './Wordmark'
+
 export default function Footer() {
   return (
     <footer
       id="about"
-      className="border-t border-glide-border mt-16 py-10 text-center text-sm text-white/50"
+      className="border-t border-glider-border dark:border-glider-darkBorder mt-10 py-12 bg-white/50 dark:bg-glider-darkPanel/40"
     >
-      <div className="max-w-6xl mx-auto px-5 space-y-2">
-        <p>
-          <b className="text-white">Glide Event Hub</b> — a community-built,
-          open-source aggregator for Glide ecosystem events.
+      <div className="max-w-6xl mx-auto px-5 flex flex-col items-center text-center gap-3">
+        <Wordmark iconClassName="w-7 h-7" textClassName="text-base" />
+        <p className="text-sm text-glider-gray dark:text-glider-darkMuted max-w-xl">
+          A community-built, open-source aggregator for Glider ecosystem events —
+          AMAs, quizzes, workshops, hackathons and meetups, all in one place.
         </p>
-        <p>
-          Inspired by community hubs like{' '}
-          <a
-            className="underline hover:text-white"
-            href="https://github.com/mrnetwork0001/rialo-event-hub"
-            target="_blank"
-            rel="noreferrer"
-          >
-            rialo-event-hub
-          </a>
-          . Not affiliated with Glide.
+        <p className="text-xs text-glider-gray/70 dark:text-glider-darkMuted/60">
+          © {new Date().getFullYear()} Glider Event Hub
         </p>
       </div>
     </footer>

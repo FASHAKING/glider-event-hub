@@ -1,10 +1,20 @@
-import { useState } from 'react'
-import type { GlideEvent, EventCategory } from '../types'
+import { useRef, useState } from 'react'
+import type {
+  EventCategory,
+  GliderEvent,
+  RecurrenceFrequency,
+} from '../types'
+
+export interface SubmitEventPayload extends Omit<GliderEvent, 'id'> {
+  imageFile?: File | null
+}
 
 interface Props {
   open: boolean
   onClose: () => void
-  onSubmit: (e: GlideEvent) => void
+  onSubmit: (
+    e: SubmitEventPayload,
+  ) => Promise<{ ok: true } | { ok: false; error: string }> | void
 }
 
 const categories: EventCategory[] = [
@@ -16,78 +26,164 @@ const categories: EventCategory[] = [
   'Launch',
 ]
 
+const platforms = [
+  'X Spaces',
+  'Discord',
+  'Telegram',
+  'Zoom',
+  'YouTube',
+  'Luma',
+  'IRL',
+  'Other',
+]
+
+const recurrences: { value: RecurrenceFrequency; label: string }[] = [
+  { value: 'none', label: 'Does not repeat' },
+  { value: 'daily', label: 'Daily' },
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Every 2 weeks' },
+  { value: 'monthly', label: 'Monthly' },
+]
+
+const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024 // 1.5 MB
+
 export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
-  const [host, setHost] = useState('')
+  const [hostsCsv, setHostsCsv] = useState('')
   const [category, setCategory] = useState<EventCategory>('AMA')
   const [startsAt, setStartsAt] = useState('')
   const [durationMinutes, setDurationMinutes] = useState(60)
   const [link, setLink] = useState('')
-  const [location, setLocation] = useState('')
+  const [platform, setPlatform] = useState<string>('')
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [imageError, setImageError] = useState<string | null>(null)
+  const [recurrence, setRecurrence] = useState<RecurrenceFrequency>('none')
+  const [occurrences, setOccurrences] = useState<number>(4)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!open) return null
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const reset = () => {
+    setTitle('')
+    setDescription('')
+    setHostsCsv('')
+    setCategory('AMA')
+    setStartsAt('')
+    setDurationMinutes(60)
+    setLink('')
+    setPlatform('')
+    setImageFile(null)
+    setImagePreview(null)
+    setImageError(null)
+    setRecurrence('none')
+    setOccurrences(4)
+    setSubmitError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const handleImage = (file: File | undefined) => {
+    setImageError(null)
+    if (!file) return
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError('Image must be under 1.5 MB.')
+      return
+    }
+    setImageFile(file)
+    const reader = new FileReader()
+    reader.onload = () => {
+      setImagePreview(typeof reader.result === 'string' ? reader.result : null)
+    }
+    reader.onerror = () => setImageError('Could not read that file.')
+    reader.readAsDataURL(file)
+  }
+
+  const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
-    if (!title || !host || !startsAt || !link) return
-    const event: GlideEvent = {
-      id: `user-${Date.now()}`,
+    const hosts = hostsCsv
+      .split(',')
+      .map((h) => h.trim())
+      .filter(Boolean)
+      .slice(0, 3)
+    if (!title || hosts.length === 0 || !startsAt || !link || !platform) return
+
+    setSubmitError(null)
+    setSubmitting(true)
+
+    const payload: SubmitEventPayload = {
       title,
       description,
-      host,
+      host: hosts[0],
+      hosts: hosts.slice(1),
       category,
       startsAt: new Date(startsAt).toISOString(),
       durationMinutes: Number(durationMinutes) || 60,
       link,
-      location: location || undefined,
+      location: platform,
       tags: ['community-submitted'],
+      imageUrl: imagePreview || undefined,
+      imageFile,
+      recurrence:
+        recurrence === 'none'
+          ? undefined
+          : { frequency: recurrence, occurrences: Math.max(1, occurrences) },
     }
-    onSubmit(event)
-    setTitle('')
-    setDescription('')
-    setHost('')
-    setStartsAt('')
-    setDurationMinutes(60)
-    setLink('')
-    setLocation('')
+
+    try {
+      const result = await onSubmit(payload)
+      if (result && 'ok' in result && result.ok === false) {
+        setSubmitError(result.error)
+        setSubmitting(false)
+        return
+      }
+      reset()
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      className="fixed inset-0 z-50 bg-glider-black/30 dark:bg-glider-black/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <form
         onClick={(e) => e.stopPropagation()}
         onSubmit={handleSubmit}
-        className="card w-full max-w-lg p-6 space-y-4"
+        className="card w-full max-w-2xl p-6 space-y-5 shadow-card my-8"
       >
         <div className="flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-bold">Submit an Event</h2>
-            <p className="text-sm text-white/60">
-              Share a Glide community event. Stored locally for now.
+            <h2 className="font-display text-2xl font-bold text-glider-black dark:text-glider-darkText">
+              Submit an Event
+            </h2>
+            <p className="text-sm text-glider-gray dark:text-glider-darkMuted mt-0.5">
+              Share a Glider community event with the hub.
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-white/60 hover:text-white text-2xl leading-none"
+            className="text-glider-gray dark:text-glider-darkMuted hover:text-glider-black dark:hover:text-glider-darkText text-2xl leading-none w-8 h-8 rounded-full hover:bg-glider-light dark:hover:bg-glider-darkPanel2 flex items-center justify-center"
             aria-label="Close"
           >
             ×
           </button>
         </div>
 
-        <div className="grid gap-3">
+        <div className="grid gap-4">
           <Field label="Title">
             <input
               required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="input"
-              placeholder="Glide Community AMA"
+              placeholder="Glider Community AMA"
             />
           </Field>
 
@@ -95,19 +191,19 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="input min-h-[80px]"
+              className="input min-h-[100px]"
               placeholder="What's the event about?"
             />
           </Field>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Host">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Host(s) — comma separated">
               <input
                 required
-                value={host}
-                onChange={(e) => setHost(e.target.value)}
+                value={hostsCsv}
+                onChange={(e) => setHostsCsv(e.target.value)}
                 className="input"
-                placeholder="@handle or team"
+                placeholder="@core_team, @devrel"
               />
             </Field>
             <Field label="Category">
@@ -125,7 +221,7 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
             </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Starts at">
               <input
                 required
@@ -146,50 +242,119 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
             </Field>
           </div>
 
-          <Field label="Link">
-            <input
-              required
-              type="url"
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              className="input"
-              placeholder="https://..."
-            />
-          </Field>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Platform">
+              <select
+                required
+                value={platform}
+                onChange={(e) => setPlatform(e.target.value)}
+                className="input"
+              >
+                <option value="">Select platform</option>
+                {platforms.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Join Link">
+              <input
+                required
+                type="url"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                className="input"
+                placeholder="https://..."
+              />
+            </Field>
+          </div>
 
-          <Field label="Location (optional)">
-            <input
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              className="input"
-              placeholder="X Spaces, Discord, IRL city..."
-            />
+          {/* Recurrence */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Recurrence">
+              <select
+                value={recurrence}
+                onChange={(e) =>
+                  setRecurrence(e.target.value as RecurrenceFrequency)
+                }
+                className="input"
+              >
+                {recurrences.map((r) => (
+                  <option key={r.value} value={r.value}>
+                    {r.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            {recurrence !== 'none' && (
+              <Field label="Repeat count (after first)">
+                <input
+                  type="number"
+                  min={1}
+                  max={52}
+                  value={occurrences}
+                  onChange={(e) => setOccurrences(Number(e.target.value))}
+                  className="input"
+                />
+              </Field>
+            )}
+          </div>
+
+          {/* Image upload */}
+          <Field label="Event Image (optional)">
+            <div className="space-y-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleImage(e.target.files?.[0])}
+                className="input file:mr-3 file:rounded-lg file:border-0 file:bg-glider-mint/40 file:dark:bg-glider-mint/15 file:px-3 file:py-1.5 file:text-glider-olive file:dark:text-glider-mint file:font-semibold"
+              />
+              {imageError && (
+                <p className="text-xs text-red-600 dark:text-red-400">
+                  {imageError}
+                </p>
+              )}
+              {imagePreview && (
+                <div className="relative h-36 rounded-xl overflow-hidden border border-glider-border dark:border-glider-darkBorder">
+                  <img
+                    src={imagePreview}
+                    alt="Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImagePreview(null)
+                      setImageFile(null)
+                      if (fileInputRef.current) fileInputRef.current.value = ''
+                    }}
+                    className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md"
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
           </Field>
         </div>
 
-        <div className="flex justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} className="btn-ghost text-sm">
+        {submitError && (
+          <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl px-3 py-2">
+            {submitError}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-1">
+          <button type="button" onClick={onClose} className="btn-ghost text-sm" disabled={submitting}>
             Cancel
           </button>
-          <button type="submit" className="btn-primary text-sm">
-            Submit
+          <button type="submit" className="btn-primary text-sm" disabled={submitting}>
+            {submitting ? 'Submitting…' : 'Submit Event'}
           </button>
         </div>
       </form>
-
-      <style>{`
-        .input {
-          width: 100%;
-          background: rgba(255,255,255,0.03);
-          border: 1px solid #1c2438;
-          border-radius: 0.75rem;
-          padding: 0.55rem 0.8rem;
-          font-size: 0.9rem;
-          color: white;
-          outline: none;
-        }
-        .input:focus { border-color: rgba(94,234,212,0.6); }
-      `}</style>
     </div>
   )
 }
@@ -203,7 +368,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="block text-xs uppercase tracking-wide text-white/50 mb-1">
+      <span className="block text-xs uppercase tracking-wider text-glider-gray dark:text-glider-darkMuted font-medium mb-1.5">
         {label}
       </span>
       {children}

@@ -5,10 +5,16 @@ import type {
   RecurrenceFrequency,
 } from '../types'
 
+export interface SubmitEventPayload extends Omit<GliderEvent, 'id'> {
+  imageFile?: File | null
+}
+
 interface Props {
   open: boolean
   onClose: () => void
-  onSubmit: (e: GliderEvent) => void
+  onSubmit: (
+    e: SubmitEventPayload,
+  ) => Promise<{ ok: true } | { ok: false; error: string }> | void
 }
 
 const categories: EventCategory[] = [
@@ -50,10 +56,13 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
   const [durationMinutes, setDurationMinutes] = useState(60)
   const [link, setLink] = useState('')
   const [platform, setPlatform] = useState<string>('')
-  const [imageDataUrl, setImageDataUrl] = useState<string | null>(null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [imageError, setImageError] = useState<string | null>(null)
   const [recurrence, setRecurrence] = useState<RecurrenceFrequency>('none')
   const [occurrences, setOccurrences] = useState<number>(4)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!open) return null
@@ -67,10 +76,12 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
     setDurationMinutes(60)
     setLink('')
     setPlatform('')
-    setImageDataUrl(null)
+    setImageFile(null)
+    setImagePreview(null)
     setImageError(null)
     setRecurrence('none')
     setOccurrences(4)
+    setSubmitError(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -81,15 +92,16 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
       setImageError('Image must be under 1.5 MB.')
       return
     }
+    setImageFile(file)
     const reader = new FileReader()
     reader.onload = () => {
-      setImageDataUrl(typeof reader.result === 'string' ? reader.result : null)
+      setImagePreview(typeof reader.result === 'string' ? reader.result : null)
     }
     reader.onerror = () => setImageError('Could not read that file.')
     reader.readAsDataURL(file)
   }
 
-  const handleSubmit = (ev: React.FormEvent) => {
+  const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
     const hosts = hostsCsv
       .split(',')
@@ -98,8 +110,10 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
       .slice(0, 3)
     if (!title || hosts.length === 0 || !startsAt || !link || !platform) return
 
-    const event: GliderEvent = {
-      id: `user-${Date.now()}`,
+    setSubmitError(null)
+    setSubmitting(true)
+
+    const payload: SubmitEventPayload = {
       title,
       description,
       host: hosts[0],
@@ -110,14 +124,27 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
       link,
       location: platform,
       tags: ['community-submitted'],
-      imageUrl: imageDataUrl || undefined,
+      imageUrl: imagePreview || undefined,
+      imageFile,
       recurrence:
         recurrence === 'none'
           ? undefined
           : { frequency: recurrence, occurrences: Math.max(1, occurrences) },
     }
-    onSubmit(event)
-    reset()
+
+    try {
+      const result = await onSubmit(payload)
+      if (result && 'ok' in result && result.ok === false) {
+        setSubmitError(result.error)
+        setSubmitting(false)
+        return
+      }
+      reset()
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -289,17 +316,18 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
                   {imageError}
                 </p>
               )}
-              {imageDataUrl && (
+              {imagePreview && (
                 <div className="relative h-36 rounded-xl overflow-hidden border border-glider-border dark:border-glider-darkBorder">
                   <img
-                    src={imageDataUrl}
+                    src={imagePreview}
                     alt="Preview"
                     className="w-full h-full object-cover"
                   />
                   <button
                     type="button"
                     onClick={() => {
-                      setImageDataUrl(null)
+                      setImagePreview(null)
+                      setImageFile(null)
                       if (fileInputRef.current) fileInputRef.current.value = ''
                     }}
                     className="absolute top-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-md"
@@ -312,12 +340,18 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
           </Field>
         </div>
 
+        {submitError && (
+          <div className="text-sm text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-xl px-3 py-2">
+            {submitError}
+          </div>
+        )}
+
         <div className="flex justify-end gap-2 pt-1">
-          <button type="button" onClick={onClose} className="btn-ghost text-sm">
+          <button type="button" onClick={onClose} className="btn-ghost text-sm" disabled={submitting}>
             Cancel
           </button>
-          <button type="submit" className="btn-primary text-sm">
-            Submit Event
+          <button type="submit" className="btn-primary text-sm" disabled={submitting}>
+            {submitting ? 'Submitting…' : 'Submit Event'}
           </button>
         </div>
       </form>

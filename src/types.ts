@@ -99,7 +99,7 @@ export function expandRecurringEvents(events: GliderEvent[]): GliderEvent[] {
 /* User accounts + connected socials                                        */
 /* ----------------------------------------------------------------------- */
 
-export type SocialPlatform = 'x' | 'telegram' | 'discord'
+export type SocialPlatform = 'x' | 'telegram' | 'discord' | 'email'
 
 export interface SocialConnection {
   /** the platform handle the user provided */
@@ -108,6 +108,8 @@ export interface SocialConnection {
   connectedAt: string
   /** whether notifications are enabled for this platform */
   notifications: boolean
+  /** Server-side identifier (e.g. Telegram chat_id) used by the bot */
+  externalId?: string
 }
 
 export type SocialConnections = Partial<Record<SocialPlatform, SocialConnection>>

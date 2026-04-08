@@ -91,7 +91,7 @@ export interface Database {
       social_connections: {
         Row: {
           user_id: string
-          platform: 'x' | 'telegram' | 'discord'
+          platform: 'x' | 'telegram' | 'discord' | 'email'
           handle: string
           external_id: string | null
           notifications: boolean
@@ -99,7 +99,7 @@ export interface Database {
         }
         Insert: {
           user_id: string
-          platform: 'x' | 'telegram' | 'discord'
+          platform: 'x' | 'telegram' | 'discord' | 'email'
           handle: string
           external_id?: string | null
           notifications?: boolean

@@ -99,7 +99,7 @@ export function expandRecurringEvents(events: GliderEvent[]): GliderEvent[] {
 /* User accounts + connected socials                                        */
 /* ----------------------------------------------------------------------- */
 
-export type SocialPlatform = 'x' | 'telegram' | 'discord'
+export type SocialPlatform = 'x' | 'telegram' | 'discord' | 'email'
 
 export interface SocialConnection {
   /** the platform handle the user provided */

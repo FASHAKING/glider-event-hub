@@ -6,12 +6,16 @@ Supabase project, including:
 - `migrations/0001_init.sql` — full schema (events, profiles, reminders,
   social connections, notification log, telegram link codes) with
   Row-Level Security policies and an `auth.users` → `profiles` trigger.
+- `migrations/0002_email_notifications.sql` — adds `email` as a valid
+  `social_connections.platform`, updates the signup trigger to auto-opt
+  every new user into email notifications, and backfills existing users.
 - `functions/telegram-webhook/` — Edge Function that handles
   `/start <CODE>` from the Glider Telegram bot and links a user's chat ID
   to their account.
 - `functions/notify-live-events/` — Cron-driven Edge Function that finds
-  events that have just gone live and DMs every reminded user via
-  Telegram.
+  events that have just gone live and delivers a notification on every
+  enabled channel for each reminded user (Telegram via Bot API, email
+  via Resend).
 
 The front-end automatically detects whether Supabase is configured. If
 the env vars are missing it falls back to "demo mode" (localStorage), so
@@ -29,7 +33,9 @@ the UI is always usable.
 2. In the project dashboard go to **SQL editor** → **New query**, paste
    the contents of [`migrations/0001_init.sql`](./migrations/0001_init.sql),
    and run it. This creates every table, RLS policy and the
-   profile-on-signup trigger.
+   profile-on-signup trigger. Then open another new query, paste
+   [`migrations/0002_email_notifications.sql`](./migrations/0002_email_notifications.sql)
+   and run it to enable the email notification channel.
 
 3. In **Storage** → **Create new bucket**, create a public bucket named
    `event-images` (or whatever you set `VITE_SUPABASE_EVENT_BUCKET` to).
@@ -59,16 +65,59 @@ in Supabase Auth.
 
 ---
 
-## 3. (Optional) Wire up the Telegram bot
+## 3. (Optional) Enable email notifications via Resend
 
-### 3a. Create a bot
+Every user who signs up is automatically opted into email notifications
+(they can turn them off in the Profile modal). To actually deliver those
+emails you need a transactional email provider — the edge function
+ships with [Resend](https://resend.com) support out of the box
+(free tier: 3000 emails/month, 100/day).
+
+### 3a. Get a Resend API key
+
+1. Sign up at <https://resend.com>.
+2. Dashboard → **API Keys** → **Create API Key** (Full access is fine).
+3. Copy the key (starts with `re_…`) — you won't see it again.
+
+Optional: verify a custom sending domain under **Domains**. If you skip
+this you can still send using Resend's shared test sender
+`onboarding@resend.dev`, but only to the email address registered on
+your Resend account.
+
+### 3b. Add the secrets to Supabase
+
+```bash
+supabase secrets set RESEND_API_KEY=re_...
+# Optional: override the default "From" header. If you verified a
+# domain, use an address on it. Otherwise leave this unset.
+supabase secrets set RESEND_FROM="Glider Event Hub <hello@yourdomain.com>"
+```
+
+Deploy (or redeploy) the notifier so it picks up the new secrets:
+
+```bash
+supabase functions deploy notify-live-events
+```
+
+Emails will now be sent alongside Telegram pings the next time an
+event goes live and the cron fires. You can test delivery manually:
+
+```bash
+curl -X POST "https://<project-ref>.functions.supabase.co/notify-live-events"
+```
+
+---
+
+## 4. (Optional) Wire up the Telegram bot
+
+### 4a. Create a bot
 
 1. In Telegram, message `@BotFather` and send `/newbot`.
 2. Pick a display name and a username (must end in `bot`, e.g.
    `GliderEventHubBot`).
 3. Save the bot token BotFather gives you.
 
-### 3b. Deploy the Edge Functions
+### 4b. Deploy the Edge Functions
 
 You need the [Supabase CLI](https://supabase.com/docs/guides/cli):
 
@@ -91,7 +140,7 @@ supabase functions deploy telegram-webhook --no-verify-jwt
 supabase functions deploy notify-live-events
 ```
 
-### 3c. Point Telegram at the webhook
+### 4c. Point Telegram at the webhook
 
 ```bash
 PROJECT_REF=<your-project-ref>
@@ -105,7 +154,7 @@ curl -X POST "https://api.telegram.org/bot$TOKEN/setWebhook" \
 
 You should see `{"ok":true,"result":true,...}`.
 
-### 3d. Schedule the live notifier
+### 4d. Schedule the live notifier
 
 In the Supabase dashboard, go to **Database → Cron Jobs** (you may need
 to enable the `pg_cron` and `pg_net` extensions first under
@@ -127,7 +176,7 @@ select cron.schedule(
 (Or, simpler: in the Supabase dashboard go to **Edge Functions → Schedules**
 and create a cron schedule for `notify-live-events` running every minute.)
 
-### 3e. Try it end-to-end
+### 4e. Try it end-to-end
 
 1. Open the app, sign up, click your avatar → **Profile**.
 2. Tap **Connect** next to Telegram. The app will:
@@ -142,7 +191,7 @@ and create a cron schedule for `notify-live-events` running every minute.)
 
 ---
 
-## 4. Adding events as an admin
+## 5. Adding events as an admin
 
 Because RLS only allows the *creator* of an event to insert/update, you
 manage events one of two ways:

@@ -116,8 +116,32 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
       sb.from('reminders').select('event_id').eq('user_id', uid),
     ])
     setProfile(prof || null)
+
+    // Defensive: if the user predates migration 0002 they may be missing
+    // an 'email' row. Insert one (notifications on by default) using the
+    // email from their profile so the notify edge function can find them.
+    let socRows = socs || []
+    if (prof && !socRows.some((r) => r.platform === 'email')) {
+      const { data: inserted } = await sb
+        .from('social_connections')
+        .upsert(
+          {
+            user_id: prof.id,
+            platform: 'email',
+            handle: prof.email,
+            notifications: true,
+            connected_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,platform' },
+        )
+        .select()
+      if (inserted && inserted.length > 0) {
+        socRows = [...socRows, ...inserted]
+      }
+    }
+
     const map: SocialConnections = {}
-    for (const row of socs || []) {
+    for (const row of socRows) {
       const conn: SocialConnection = {
         handle: row.handle,
         connectedAt: row.connected_at,

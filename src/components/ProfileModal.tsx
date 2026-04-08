@@ -23,7 +23,23 @@ const platforms: {
   hint: string
   icon: JSX.Element
   color: string
+  /** Always-on channel that uses the account email; no Connect step. */
+  alwaysOn?: boolean
 }[] = [
+  {
+    key: 'email',
+    name: 'Email',
+    placeholder: '',
+    hint: 'Get notified at the email you signed up with whenever a tracked event goes live.',
+    color: 'bg-glider-olive text-white dark:bg-glider-mint dark:text-glider-black',
+    alwaysOn: true,
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m3 7 9 6 9-6" />
+      </svg>
+    ),
+  },
   {
     key: 'x',
     name: 'X (Twitter)',
@@ -224,6 +240,17 @@ export default function ProfileModal({
 
               {platforms.map((p) => {
                 const conn = user.socials[p.key]
+                // Email is always rendered as connected, falling back to
+                // the account email while the DB row is being created.
+                const effectiveConn =
+                  p.alwaysOn && !conn
+                    ? {
+                        handle: user.email,
+                        connectedAt: user.createdAt,
+                        notifications: true,
+                        externalId: undefined,
+                      }
+                    : conn
                 return (
                   <div
                     key={p.key}
@@ -238,13 +265,24 @@ export default function ProfileModal({
                       <div className="font-semibold text-glider-black dark:text-glider-darkText text-sm">
                         {p.name}
                       </div>
-                      {conn ? (
+                      {effectiveConn ? (
                         <div className="text-xs text-glider-gray dark:text-glider-darkMuted truncate">
-                          Connected as{' '}
-                          <span className="font-mono text-glider-olive dark:text-glider-mint">
-                            @{conn.handle}
-                          </span>
-                          {conn.externalId && (
+                          {p.alwaysOn ? (
+                            <>
+                              Sending to{' '}
+                              <span className="font-mono text-glider-olive dark:text-glider-mint">
+                                {effectiveConn.handle}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              Connected as{' '}
+                              <span className="font-mono text-glider-olive dark:text-glider-mint">
+                                @{effectiveConn.handle}
+                              </span>
+                            </>
+                          )}
+                          {effectiveConn.externalId && (
                             <span className="ml-1 text-[10px] text-glider-mint">
                               · chat linked
                             </span>
@@ -288,23 +326,25 @@ export default function ProfileModal({
                         )}
                     </div>
 
-                    {conn ? (
+                    {effectiveConn ? (
                       <div className="flex items-center gap-2">
                         <label className="flex items-center gap-1.5 text-xs text-glider-gray dark:text-glider-darkMuted cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={conn.notifications}
+                            checked={effectiveConn.notifications}
                             onChange={() => toggleSocialNotifications(p.key)}
                           />
                           Notify
                         </label>
-                        <button
-                          type="button"
-                          onClick={() => disconnectSocial(p.key)}
-                          className="btn-ghost text-xs py-1.5 px-3"
-                        >
-                          Disconnect
-                        </button>
+                        {!p.alwaysOn && (
+                          <button
+                            type="button"
+                            onClick={() => disconnectSocial(p.key)}
+                            className="btn-ghost text-xs py-1.5 px-3"
+                          >
+                            Disconnect
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">

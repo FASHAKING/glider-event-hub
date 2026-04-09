@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import type { GliderEvent, EventStatus, EventAccent } from '../types'
 import {
   CalendarIcon,
@@ -74,9 +75,11 @@ interface Props {
 }
 
 export default function EventCard({ event, status, layout = 'grid', onOpen }: Props) {
+  const [imgFailed, setImgFailed] = useState(false)
   const CatIcon = getCategoryIcon(event.category)
   const accent = event.accent || 'mint'
   const badge = statusBadge(status, event.startsAt)
+  const showImage = !!event.imageUrl && !imgFailed
 
   const handleCardKey = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -97,11 +100,12 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
         <div
           className={`relative shrink-0 sm:w-44 h-28 rounded-xl overflow-hidden bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center`}
         >
-          {event.imageUrl ? (
+          {showImage ? (
             <img
               src={event.imageUrl}
               alt=""
               className="absolute inset-0 w-full h-full object-cover"
+              onError={() => setImgFailed(true)}
             />
           ) : (
             <CatIcon
@@ -180,11 +184,12 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
       <div
         className={`relative h-36 bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center overflow-hidden`}
       >
-        {event.imageUrl ? (
+        {showImage ? (
           <img
             src={event.imageUrl}
             alt=""
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={() => setImgFailed(true)}
           />
         ) : (
           <CatIcon

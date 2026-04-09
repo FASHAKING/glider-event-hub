@@ -50,6 +50,7 @@ function statusLabel(status: EventStatus) {
 export default function EventDetailModal({ event, onClose, onRequireAuth }: Props) {
   const { user, toggleAttendance, hasAttended } = useAuth()
   const [tick, setTick] = useState(0)
+  const [imgFailed, setImgFailed] = useState(false)
 
   // re-render every second so the live countdown stays accurate
   useEffect(() => {
@@ -108,8 +109,8 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
         <div className="flex flex-col md:flex-row bg-[#111111] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
           
           <div className={`relative w-full md:w-[55%] h-64 md:h-[400px] bg-gradient-to-br ${accentGradients[accent]}`}>
-            {event.imageUrl ? (
-              <img src={event.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-80" />
+            {event.imageUrl && !imgFailed ? (
+              <img src={event.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-80" onError={() => setImgFailed(true)} />
             ) : (
                 <div className="absolute inset-0 flex items-center justify-center mix-blend-overlay opacity-30">
                   <CatIcon width={200} height={200} />

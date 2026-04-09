@@ -8,7 +8,7 @@ import {
   PinIcon,
   ExternalIcon,
   LiveDotIcon,
-  CategoryIcon,
+  getCategoryIcon,
   ClockIcon,
 } from './Icons'
 
@@ -82,7 +82,7 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
 
   if (!event) return null
 
-  const CatIcon = CategoryIcon[event.category]
+  const CatIcon = getCategoryIcon(event.category)
   const accent = event.accent || 'mint'
   const start = new Date(event.startsAt)
   const end = new Date(start.getTime() + event.durationMinutes * 60_000)

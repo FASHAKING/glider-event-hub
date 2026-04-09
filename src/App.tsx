@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import LiveBanner from './components/LiveBanner'
 import HeroCard from './components/HeroCard'
 import EventList from './components/EventList'
+import CalendarPage from './components/CalendarPage'
 import SubmitEventModal from './components/SubmitEventModal'
 import EventDetailModal from './components/EventDetailModal'
 import AuthModal from './components/AuthModal'
@@ -21,15 +22,24 @@ const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as
   | string
   | undefined
 
+/** Top-level in-app views. Anchors like leaderboard stay as hash scrolls. */
+export type AppView = 'home' | 'calendar'
+
 function AppInner() {
   const { user } = useAuth()
   const { events, submitEvent } = useEvents(user?.id || null)
+  const [view, setView] = useState<AppView>('home')
   const [submitOpen, setSubmitOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [profileOpen, setProfileOpen] = useState(false)
   const [activeEvent, setActiveEvent] = useState<GliderEvent | null>(null)
   const [, forceTick] = useState(0)
+
+  // Scroll back to the top when switching top-level views.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'auto' })
+  }, [view])
 
   // Re-evaluate live/upcoming/past every 30s
   useEffect(() => {
@@ -60,6 +70,8 @@ function AppInner() {
   return (
     <div className="min-h-screen flex flex-col lg:pl-64">
       <Sidebar
+        view={view}
+        onNavigate={setView}
         onSubmitClick={() => {
           if (isSupabaseConfigured && !user) {
             openAuth('signup')
@@ -82,19 +94,29 @@ function AppInner() {
       {liveEvent && <LiveBanner event={liveEvent} />}
 
       <main className="flex-1">
-        <HeroCard
-          total={allEvents.length}
-          members={COMMUNITY_MEMBERS}
-          nextEvent={nextEvent}
-          onSubmitClick={() => {
-            if (isSupabaseConfigured && !user) {
-              openAuth('signup')
-              return
-            }
-            setSubmitOpen(true)
-          }}
-        />
-        <EventList events={allEvents} onOpenEvent={setActiveEvent} />
+        {view === 'home' ? (
+          <>
+            <HeroCard
+              total={allEvents.length}
+              members={COMMUNITY_MEMBERS}
+              nextEvent={nextEvent}
+              onSubmitClick={() => {
+                if (isSupabaseConfigured && !user) {
+                  openAuth('signup')
+                  return
+                }
+                setSubmitOpen(true)
+              }}
+            />
+            <EventList events={allEvents} onOpenEvent={setActiveEvent} />
+          </>
+        ) : (
+          <CalendarPage
+            events={allEvents}
+            onOpenEvent={setActiveEvent}
+            onBack={() => setView('home')}
+          />
+        )}
       </main>
 
       <Footer />

@@ -167,3 +167,25 @@ export const CategoryIcon: Record<
   Hackathon: HackathonIcon,
   Launch: LaunchIcon,
 }
+
+/** Default icon used for free-form / custom category names. */
+const DefaultCategoryIcon = (p: IconProps) => (
+  <svg {...base} {...p}>
+    <path d="M12 3l9 4-9 4-9-4 9-4z" />
+    <path d="M3 12l9 4 9-4" />
+    <path d="M3 17l9 4 9-4" />
+  </svg>
+)
+
+/**
+ * Returns the icon component for a category name, falling back to a generic
+ * icon when the category isn't one of the built-in presets.
+ */
+export function getCategoryIcon(
+  category: string,
+): (p: IconProps) => JSX.Element {
+  return (
+    (CategoryIcon as Record<string, (p: IconProps) => JSX.Element>)[category] ??
+    DefaultCategoryIcon
+  )
+}

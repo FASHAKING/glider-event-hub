@@ -1,9 +1,6 @@
 import { useRef, useState } from 'react'
-import type {
-  EventCategory,
-  GliderEvent,
-  RecurrenceFrequency,
-} from '../types'
+import type { GliderEvent, RecurrenceFrequency } from '../types'
+import { PRESET_CATEGORIES } from '../types'
 
 export interface SubmitEventPayload extends Omit<GliderEvent, 'id'> {
   imageFile?: File | null
@@ -17,16 +14,11 @@ interface Props {
   ) => Promise<{ ok: true } | { ok: false; error: string }> | void
 }
 
-const categories: EventCategory[] = [
-  'AMA',
-  'Quiz',
-  'Workshop',
-  'Meetup',
-  'Hackathon',
-  'Launch',
-]
+// Suggestions only — both fields are free-text, so submitters can type
+// anything. The datalist just provides autocomplete hints.
+const CATEGORY_SUGGESTIONS = PRESET_CATEGORIES
 
-const platforms = [
+const PLATFORM_SUGGESTIONS = [
   'X Spaces',
   'Discord',
   'Telegram',
@@ -51,7 +43,7 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [hostsCsv, setHostsCsv] = useState('')
-  const [category, setCategory] = useState<EventCategory>('AMA')
+  const [category, setCategory] = useState<string>('AMA')
   const [startsAt, setStartsAt] = useState('')
   const [durationMinutes, setDurationMinutes] = useState(60)
   const [link, setLink] = useState('')
@@ -108,7 +100,15 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
       .map((h) => h.trim())
       .filter(Boolean)
       .slice(0, 3)
-    if (!title || hosts.length === 0 || !startsAt || !link || !platform) return
+    if (
+      !title ||
+      hosts.length === 0 ||
+      !category.trim() ||
+      !startsAt ||
+      !link ||
+      !platform.trim()
+    )
+      return
 
     setSubmitError(null)
     setSubmitting(true)
@@ -118,11 +118,11 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
       description,
       host: hosts[0],
       hosts: hosts.slice(1),
-      category,
+      category: category.trim(),
       startsAt: new Date(startsAt).toISOString(),
       durationMinutes: Number(durationMinutes) || 60,
       link,
-      location: platform,
+      location: platform.trim(),
       tags: ['community-submitted'],
       imageUrl: imagePreview || undefined,
       imageFile,
@@ -207,17 +207,19 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
               />
             </Field>
             <Field label="Category">
-              <select
+              <input
+                required
                 value={category}
-                onChange={(e) => setCategory(e.target.value as EventCategory)}
+                onChange={(e) => setCategory(e.target.value)}
                 className="input"
-              >
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
+                list="event-category-suggestions"
+                placeholder="AMA, Workshop, Party Night…"
+              />
+              <datalist id="event-category-suggestions">
+                {CATEGORY_SUGGESTIONS.map((c) => (
+                  <option key={c} value={c} />
                 ))}
-              </select>
+              </datalist>
             </Field>
           </div>
 
@@ -244,19 +246,19 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Field label="Platform">
-              <select
+              <input
                 required
                 value={platform}
                 onChange={(e) => setPlatform(e.target.value)}
                 className="input"
-              >
-                <option value="">Select platform</option>
-                {platforms.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
+                list="event-platform-suggestions"
+                placeholder="X Spaces, Discord, Zoom…"
+              />
+              <datalist id="event-platform-suggestions">
+                {PLATFORM_SUGGESTIONS.map((p) => (
+                  <option key={p} value={p} />
                 ))}
-              </select>
+              </datalist>
             </Field>
             <Field label="Join Link">
               <input

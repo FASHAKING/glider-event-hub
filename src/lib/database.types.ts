@@ -19,12 +19,14 @@ export interface Database {
           id: string
           username: string
           email: string
+          avatar_url: string | null
           created_at: string
         }
         Insert: {
           id: string
           username: string
           email: string
+          avatar_url?: string | null
           created_at?: string
         }
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>
@@ -151,6 +153,24 @@ export interface Database {
         }
         Update: Partial<
           Database['public']['Tables']['telegram_link_codes']['Insert']
+        >
+        Relationships: []
+      }
+      attendance: {
+        Row: {
+          user_id: string
+          event_id: string
+          category: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          event_id: string
+          category: string
+          created_at?: string
+        }
+        Update: Partial<
+          Database['public']['Tables']['attendance']['Insert']
         >
         Relationships: []
       }

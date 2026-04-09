@@ -158,7 +158,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     id: string
     username: string
     email: string
-    avatar_url?: string
+    avatar_url?: string | null
   } | null>(null)
   const [socials, setSocials] = useState<SocialConnections>({})
   const [reminders, setReminders] = useState<string[]>([])
@@ -182,7 +182,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
         .select('id, username, email')
         .eq('id', uid)
         .maybeSingle()
-      prof = fallbackProf
+      prof = fallbackProf ? { ...fallbackProf, avatar_url: null } : null
     }
 
     const [{ data: socs }, { data: rems }, { data: attends }] = await Promise.all([
@@ -383,7 +383,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     async (updates) => {
       if (!session?.user) return { ok: false, error: 'Sign in first.' }
       
-      const patch: any = {}
+      const patch: { username?: string; avatar_url?: string } = {}
       if (updates.username !== undefined) {
         patch.username = updates.username.trim().replace(/^@/, '')
       }
@@ -422,7 +422,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
       id: profile.id,
       username: profile.username,
       email: profile.email,
-      avatarUrl: profile.avatar_url,
+      avatarUrl: profile.avatar_url ?? undefined,
       passwordHash: '',
       createdAt: session.user.created_at || new Date().toISOString(),
       socials,

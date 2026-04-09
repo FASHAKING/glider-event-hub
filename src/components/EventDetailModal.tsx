@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { GliderEvent, EventAccent, EventStatus } from '../types'
 import { getEventStatus } from '../types'
 import { useAuth } from '../context/AuthContext'
+import { useComments } from '../hooks/useComments'
 import {
   CalendarIcon,
   UserIcon,
@@ -47,10 +48,29 @@ function statusLabel(status: EventStatus) {
   return 'UPCOMING'
 }
 
+function formatCommentTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins}m ago`
+  const hrs = Math.floor(mins / 60)
+  if (hrs < 24) return `${hrs}h ago`
+  const days = Math.floor(hrs / 24)
+  if (days < 7) return `${days}d ago`
+  return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+}
+
 export default function EventDetailModal({ event, onClose, onRequireAuth }: Props) {
   const { user, toggleAttendance, hasAttended } = useAuth()
   const [tick, setTick] = useState(0)
   const [imgFailed, setImgFailed] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [posting, setPosting] = useState(false)
+  const { comments, loading: commentsLoading, postComment } = useComments(
+    event?.id || null,
+    user?.id || null,
+    user?.username || null,
+  )
 
   // re-render every second so the live countdown stays accurate
   useEffect(() => {
@@ -261,26 +281,78 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
           <div className="w-full lg:w-[35%] flex flex-col">
             <div className="bg-[#111111] border border-white/5 rounded-3xl p-6 shadow-card h-full min-h-[400px] flex flex-col relative overflow-hidden">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-glider-mint to-glider-sky opacity-20" />
-              
+
               <div className="flex items-center gap-2 text-white font-bold text-lg mb-6 pb-4 border-b border-white/5">
                 <MessageIcon width={20} height={20} className="text-glider-mint" />
-                Discussion (0)
+                Discussion ({comments.length})
               </div>
 
-              <div className="flex-1 flex flex-col gap-4">
-                <button
-                  type="button" 
-                  onClick={() => {
-                    if (!user) onRequireAuth()
-                  }}
-                  className="w-full bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-center text-sm font-medium text-white/30 hover:bg-white/10 transition-colors"
-                >
-                  Sign in to join the discussion.
-                </button>
+              <div className="flex-1 flex flex-col gap-4 min-h-0">
+                {/* Comment input or sign-in prompt */}
+                {user ? (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault()
+                      if (!commentText.trim() || posting) return
+                      setPosting(true)
+                      const result = await postComment(commentText)
+                      if (result.ok) setCommentText('')
+                      setPosting(false)
+                    }}
+                    className="flex gap-2"
+                  >
+                    <input
+                      type="text"
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder="Write a comment..."
+                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-glider-mint/50 transition-colors"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!commentText.trim() || posting}
+                      className="px-4 py-2.5 bg-glider-mint text-black rounded-xl text-sm font-bold hover:bg-[#8CD8C5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                    >
+                      {posting ? '...' : 'Post'}
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onRequireAuth()}
+                    className="w-full bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-center text-sm font-medium text-white/30 hover:bg-white/10 transition-colors"
+                  >
+                    Sign in to join the discussion.
+                  </button>
+                )}
 
-                <div className="flex-1 flex flex-col items-center justify-center text-center mt-10 opacity-40">
-                  <MessageIcon width={32} height={32} className="mb-4 text-white/50" />
-                  <p className="text-sm text-balance">No comments yet. Be the first<br/>to share your thoughts!</p>
+                {/* Comments list */}
+                <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                  {commentsLoading ? (
+                    <div className="flex-1 flex items-center justify-center py-10 opacity-40">
+                      <p className="text-sm">Loading comments...</p>
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center py-10 opacity-40">
+                      <MessageIcon width={32} height={32} className="mb-4 text-white/50" />
+                      <p className="text-sm text-balance">No comments yet. Be the first<br/>to share your thoughts!</p>
+                    </div>
+                  ) : (
+                    comments.map((c) => (
+                      <div key={c.id} className="bg-white/5 border border-white/5 rounded-xl p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="w-7 h-7 rounded-full bg-glider-mint/20 border border-glider-mint/30 flex items-center justify-center text-xs font-bold text-glider-mint shrink-0">
+                            {c.username.charAt(0).toUpperCase()}
+                          </div>
+                          <span className="text-sm font-semibold text-white">{c.username}</span>
+                          <span className="text-[11px] text-white/30 ml-auto shrink-0">
+                            {formatCommentTime(c.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-white/70 leading-relaxed">{c.body}</p>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
             </div>

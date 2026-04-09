@@ -92,7 +92,7 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
         tabIndex={0}
         onClick={() => onOpen(event)}
         onKeyDown={handleCardKey}
-        className="card p-4 flex flex-col sm:flex-row gap-4 hover:border-glider-olive/40 dark:hover:border-glider-mint/40 hover:shadow-card transition-all cursor-pointer"
+        className="card p-4 flex flex-col sm:flex-row gap-4 hover:border-glider-olive/30 dark:hover:border-glider-mint/30 transform-gpu hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-[0_8px_30px_rgba(168,224,209,0.12)] transition-all cursor-pointer group"
       >
         <div
           className={`relative shrink-0 sm:w-44 h-28 rounded-xl overflow-hidden bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center`}
@@ -175,7 +175,7 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
       tabIndex={0}
       onClick={() => onOpen(event)}
       onKeyDown={handleCardKey}
-      className="card overflow-hidden flex flex-col hover:border-glider-olive/40 dark:hover:border-glider-mint/40 hover:shadow-card transition-all duration-200 group cursor-pointer"
+      className="card overflow-hidden flex flex-col hover:border-glider-olive/30 dark:hover:border-glider-mint/30 transform-gpu hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-[0_8px_30px_rgba(168,224,209,0.12)] transition-all duration-300 group cursor-pointer"
     >
       <div
         className={`relative h-36 bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center overflow-hidden`}
@@ -201,7 +201,7 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
           )}
           {badge.text}
         </span>
-        <span className="absolute top-3 right-3 chip bg-white/90 dark:bg-glider-darkPanel/90 backdrop-blur border-transparent text-glider-black dark:text-glider-darkText text-[10px] font-bold">
+        <span className="absolute top-3 right-3 chip bg-white/90 dark:bg-[#11141A]/90 backdrop-blur-md border-white/20 dark:border-white/10 text-glider-black dark:text-glider-darkText text-[10px] font-bold shadow-sm">
           <CatIcon width={11} height={11} className="text-glider-olive dark:text-glider-mint" />
           {event.category}
         </span>

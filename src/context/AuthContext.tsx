@@ -9,6 +9,7 @@ import {
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase, isSupabaseConfigured } from '../lib/supabase'
 import type {
+  BadgeId,
   SocialConnection,
   SocialConnections,
   SocialPlatform,
@@ -36,6 +37,8 @@ interface AuthState {
   authUser: User | null
   loading: boolean
   configured: boolean
+  /** All registered users for the leaderboard */
+  allUsers: UserAccount[]
   signUp: (
     username: string,
     email: string,
@@ -55,11 +58,62 @@ interface AuthState {
   toggleSocialNotifications: (platform: SocialPlatform) => Promise<void>
   toggleReminder: (eventId: string) => Promise<void>
   hasReminder: (eventId: string) => boolean
+  toggleAttendance: (eventId: string, category: string) => Promise<void>
+  hasAttended: (eventId: string) => boolean
   /** Force a refresh of profile/socials/reminders from the backend */
   refresh: () => Promise<void>
+  /** Update user profile (username and/or avatarUrl) */
+  updateProfile: (updates: {
+    username?: string
+    avatarUrl?: string
+  }) => Promise<{ ok: true } | { ok: false; error: string }>
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined)
+
+/* ----------------------------------------------------------------- */
+/* Badge calculations                                                 */
+/* ----------------------------------------------------------------- */
+
+function recalcBadges(
+  user: UserAccount,
+  attendedEvents: string[],
+  eventCategories: Record<string, string>,
+): BadgeId[] {
+  const earned: BadgeId[] = []
+  const count = attendedEvents.length
+
+  // Milestone badges
+  if (count >= 1) earned.push('first_event')
+  if (count >= 5) earned.push('event_explorer')
+  if (count >= 10) earned.push('event_veteran')
+  if (count >= 25) earned.push('event_legend')
+
+  // Category-specific badges
+  const catCounts: Record<string, number> = {}
+  for (const eid of attendedEvents) {
+    const cat = eventCategories[eid]
+    if (cat) catCounts[cat] = (catCounts[cat] || 0) + 1
+  }
+  if ((catCounts['AMA'] || 0) >= 3) earned.push('ama_fan')
+  if ((catCounts['Quiz'] || 0) >= 3) earned.push('quiz_master')
+  if ((catCounts['Workshop'] || 0) >= 3) earned.push('workshop_grad')
+
+  // Social butterfly
+  if (Object.keys(user.socials).length >= 3) earned.push('social_butterfly')
+
+  // Early bird — attended within 1 hour of account creation
+  if (count >= 1) {
+    const createdMs = new Date(user.createdAt).getTime()
+    const oneHour = 60 * 60 * 1000
+    // We can't know exact attendance timestamp, so award if they attended AND
+    // the first attendance happened within the first hour of account creation.
+    // Since we store attendance at toggle-time, check if now is within 1 hour.
+    if (Date.now() - createdMs <= oneHour) earned.push('early_bird')
+  }
+
+  return earned
+}
 
 /* ----------------------------------------------------------------- */
 /* Demo-mode helpers (localStorage)                                   */
@@ -104,18 +158,47 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     id: string
     username: string
     email: string
+    avatar_url?: string
   } | null>(null)
   const [socials, setSocials] = useState<SocialConnections>({})
   const [reminders, setReminders] = useState<string[]>([])
+  const [attendedEvents, setAttendedEvents] = useState<string[]>([])
+  const [eventCategories, setEventCategories] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
 
   const loadProfileData = useCallback(async (uid: string) => {
-    const [{ data: prof }, { data: socs }, { data: rems }] = await Promise.all([
-      sb.from('profiles').select('id, username, email').eq('id', uid).maybeSingle(),
+    // Try to load with avatar_url first
+    let { data: prof, error: profError } = await sb
+      .from('profiles')
+      .select('id, username, email, avatar_url')
+      .eq('id', uid)
+      .maybeSingle()
+
+    // If it fails (likely due to missing column), fallback to original selection
+    if (profError) {
+      console.warn('Profile fetch with avatar_url failed, falling back:', profError.message)
+      const { data: fallbackProf } = await sb
+        .from('profiles')
+        .select('id, username, email')
+        .eq('id', uid)
+        .maybeSingle()
+      prof = fallbackProf
+    }
+
+    const [{ data: socs }, { data: rems }, { data: attends }] = await Promise.all([
       sb.from('social_connections').select('*').eq('user_id', uid),
       sb.from('reminders').select('event_id').eq('user_id', uid),
+      sb.from('attendance').select('event_id, category').eq('user_id', uid),
     ])
+    
     setProfile(prof || null)
+    
+    const catMap: Record<string, string> = {}
+    if (attends) {
+      for (const a of attends) catMap[a.event_id] = a.category
+    }
+    setEventCategories(catMap)
+    setAttendedEvents((attends || []).map((a) => a.event_id))
 
     // Defensive: if the user predates migration 0002 they may be missing
     // an 'email' row. Insert one (notifications on by default) using the
@@ -191,10 +274,13 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, error: 'All fields are required.' }
       if (password.length < 6)
         return { ok: false, error: 'Password must be at least 6 characters.' }
+      
+      const cleanUsername = username.trim().replace(/^@/, '')
+      
       const { error } = await sb.auth.signUp({
         email: email.trim(),
         password,
-        options: { data: { username: username.trim() } },
+        options: { data: { username: cleanUsername } },
       })
       if (error) return { ok: false, error: error.message }
       return { ok: true }
@@ -293,24 +379,94 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     [reminders],
   )
 
+  const updateProfile = useCallback<AuthState['updateProfile']>(
+    async (updates) => {
+      if (!session?.user) return { ok: false, error: 'Sign in first.' }
+      
+      const patch: any = {}
+      if (updates.username !== undefined) {
+        patch.username = updates.username.trim().replace(/^@/, '')
+      }
+      if (updates.avatarUrl !== undefined) {
+        patch.avatar_url = updates.avatarUrl
+      }
+      
+      if (Object.keys(patch).length === 0) return { ok: true }
+      
+      const { error } = await sb
+        .from('profiles')
+        .update(patch)
+        .eq('id', session.user.id)
+        
+      if (error) {
+        let msg = error.message
+        if (msg.includes('column "avatar_url" does not exist')) {
+          msg = 'The avatar_url column is missing from your database. Please run the SQL migration shared earlier.'
+        }
+        return { ok: false, error: msg }
+      }
+      await refresh()
+      return { ok: true }
+    },
+    [sb, session, refresh]
+  )
+
   const user = useMemo<UserAccount | null>(() => {
     if (!session?.user || !profile) return null
+    const badges = recalcBadges(
+      { ...profile, socials, remindersFor: reminders, attendedEvents, earnedBadges: [] } as any,
+      attendedEvents,
+      eventCategories
+    )
     return {
       id: profile.id,
       username: profile.username,
       email: profile.email,
+      avatarUrl: profile.avatar_url,
       passwordHash: '',
       createdAt: session.user.created_at || new Date().toISOString(),
       socials,
       remindersFor: reminders,
+      attendedEvents: attendedEvents,
+      earnedBadges: badges,
     }
-  }, [session, profile, socials, reminders])
+  }, [session, profile, socials, reminders, attendedEvents, eventCategories])
+
+  const toggleAttendance = useCallback<AuthState['toggleAttendance']>(
+    async (eventId, category) => {
+      if (!session?.user) return
+      const has = attendedEvents.includes(eventId)
+      if (has) {
+        await sb
+          .from('attendance')
+          .delete()
+          .eq('user_id', session.user.id)
+          .eq('event_id', eventId)
+      } else {
+        await sb
+          .from('attendance')
+          .insert({
+            user_id: session.user.id,
+            event_id: eventId,
+            category: category,
+          })
+      }
+      await refresh()
+    },
+    [sb, session, attendedEvents, refresh],
+  )
+
+  const hasAttended = useCallback(
+    (eventId: string) => attendedEvents.includes(eventId),
+    [attendedEvents],
+  )
 
   const value: AuthState = {
     user,
     authUser: session?.user || null,
     loading,
     configured: true,
+    allUsers: user ? [user] : [],
     signUp,
     signIn,
     signOut,
@@ -319,7 +475,10 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     toggleSocialNotifications,
     toggleReminder,
     hasReminder,
+    toggleAttendance,
+    hasAttended,
     refresh,
+    updateProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -369,14 +528,17 @@ function DemoAuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: false, error: 'Password must be at least 6 characters.' }
       if (accounts.some((a) => a.email.toLowerCase() === cleanEmail))
         return { ok: false, error: 'An account with that email already exists.' }
+      const cleanUsername = username.trim().replace(/^@/, '')
       const newUser: UserAccount = {
         id: `u-${Date.now()}`,
-        username: username.trim(),
+        username: cleanUsername,
         email: cleanEmail,
         passwordHash: trivialHash(password),
         createdAt: new Date().toISOString(),
         socials: {},
         remindersFor: [],
+        attendedEvents: [],
+        earnedBadges: [],
       }
       setAccounts((prev) => [...prev, newUser])
       setSessionId(newUser.id)
@@ -473,11 +635,79 @@ function DemoAuthProvider({ children }: { children: React.ReactNode }) {
     [user],
   )
 
+  /** Category lookup stored alongside attendance for badge calculation */
+  const [eventCategories, setEventCategories] = useState<Record<string, string>>(() => {
+    try {
+      const raw = localStorage.getItem('glider-event-hub:event-categories')
+      return raw ? JSON.parse(raw) : {}
+    } catch { return {} }
+  })
+
+  const toggleAttendance = useCallback<AuthState['toggleAttendance']>(
+    async (eventId, category) => {
+      // Persist category map
+      setEventCategories((prev) => {
+        const next = { ...prev, [eventId]: category }
+        localStorage.setItem('glider-event-hub:event-categories', JSON.stringify(next))
+        return next
+      })
+
+      updateUser((u) => {
+        const has = u.attendedEvents.includes(eventId)
+        const nextAttended = has
+          ? u.attendedEvents.filter((id) => id !== eventId)
+          : [...u.attendedEvents, eventId]
+
+        // Build category map from updated attended list
+        const catMap: Record<string, string> = { ...eventCategories, [eventId]: category }
+
+        const nextBadges = recalcBadges(
+          { ...u, attendedEvents: nextAttended },
+          nextAttended,
+          catMap,
+        )
+
+        return {
+          ...u,
+          attendedEvents: nextAttended,
+          earnedBadges: nextBadges,
+        }
+      })
+    },
+    [updateUser, eventCategories],
+  )
+
+  const updateProfile = useCallback<AuthState['updateProfile']>(
+    async (updates) => {
+      if (!user) return { ok: false, error: 'Sign in first.' }
+      
+      updateUser((u) => {
+        const next = { ...u }
+        if (updates.username !== undefined) {
+          next.username = updates.username.trim().replace(/^@/, '')
+        }
+        if (updates.avatarUrl !== undefined) {
+          next.avatarUrl = updates.avatarUrl
+        }
+        return next
+      })
+      
+      return { ok: true }
+    },
+    [user, updateUser]
+  )
+
+  const hasAttended = useCallback(
+    (eventId: string) => !!user?.attendedEvents?.includes(eventId),
+    [user],
+  )
+
   const value: AuthState = {
     user,
     authUser: null,
     loading: false,
     configured: false,
+    allUsers: accounts,
     signUp,
     signIn,
     signOut,
@@ -486,7 +716,10 @@ function DemoAuthProvider({ children }: { children: React.ReactNode }) {
     toggleSocialNotifications,
     toggleReminder,
     hasReminder,
+    toggleAttendance,
+    hasAttended,
     refresh: async () => {},
+    updateProfile,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

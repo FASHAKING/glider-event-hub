@@ -6,11 +6,12 @@ import type { AppView } from '../App'
 
 interface NavItem {
   label: string
-  href: string
+  href?: string
   external?: boolean
   icon: JSX.Element
   /** Which in-app view this item maps to. Undefined = anchor scroll. */
   view?: AppView
+  action?: 'suggestion'
 }
 
 const HomeIcon = (
@@ -74,6 +75,7 @@ interface Props {
   view: AppView
   onNavigate: (view: AppView) => void
   onSubmitClick: () => void
+  onSuggestionClick: () => void
   onSignInClick: () => void
   onSignUpClick: () => void
   onProfileClick: () => void
@@ -100,13 +102,13 @@ const navLinkBase =
 
 const navLinkInactive =
   'text-glider-gray dark:text-glider-darkMuted ' +
-  'hover:bg-glider-light dark:hover:bg-glider-darkPanel2 ' +
+  'hover:bg-glider-light/80 dark:hover:bg-white/5 ' +
   'hover:text-glider-black dark:hover:text-glider-darkText'
 
 const navLinkActive =
-  'bg-glider-mint/30 dark:bg-glider-mint/15 ' +
+  'bg-glider-mint/20 dark:bg-glider-mint/10 ' +
   'text-glider-olive dark:text-glider-mint font-semibold ' +
-  'ring-1 ring-inset ring-glider-mint/60 dark:ring-glider-mint/30'
+  'ring-1 ring-inset ring-glider-mint/50 dark:ring-glider-mint/20 shadow-[inset_0_0_20px_rgba(168,224,209,0.15)] dark:shadow-[inset_0_0_20px_rgba(168,224,209,0.05)]'
 
 const navLink = `${navLinkBase} ${navLinkInactive}`
 
@@ -120,6 +122,7 @@ export default function Sidebar({
   view,
   onNavigate,
   onSubmitClick,
+  onSuggestionClick,
   onSignInClick,
   onSignUpClick,
   onProfileClick,
@@ -130,8 +133,8 @@ export default function Sidebar({
   const items: NavItem[] = [
     { label: 'Home', href: '#', icon: HomeIcon, view: 'home' },
     { label: 'Calendar', href: '#calendar', icon: CalIcon, view: 'calendar' },
-    { label: 'Leaderboard', href: '#leaderboard', icon: TrophyIcon },
-    { label: 'Suggestions', href: '#about', icon: BulbIcon },
+    { label: 'Leaderboard', href: '#leaderboard', icon: TrophyIcon, view: 'leaderboard' },
+    { label: 'Suggestions', icon: BulbIcon, action: 'suggestion' },
   ]
   const links: NavItem[] = [
     { label: 'Glider Discord', href: 'https://discord.gg/xDy7M6xNPR', external: true, icon: DiscordIcon },
@@ -142,7 +145,7 @@ export default function Sidebar({
   return (
     <>
       {/* mobile top bar */}
-      <div className="lg:hidden sticky top-0 z-40 flex items-center justify-between bg-glider-bg/85 dark:bg-glider-darkBg/85 backdrop-blur border-b border-glider-border dark:border-glider-darkBorder px-4 py-3">
+      <div className="lg:hidden sticky top-0 z-40 flex items-center justify-between bg-white/80 dark:bg-black/60 backdrop-blur-xl border-b border-glider-border dark:border-white/10 px-4 py-3">
         <a href="#" className="flex items-center">
           <Wordmark iconClassName="w-8 h-8" textClassName="text-base" />
         </a>
@@ -152,9 +155,13 @@ export default function Sidebar({
             <button
               onClick={onProfileClick}
               aria-label="Open profile"
-              className="w-9 h-9 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 border border-glider-mint dark:border-glider-mint/30 flex items-center justify-center font-display text-sm font-bold text-glider-olive dark:text-glider-mint"
+              className="w-9 h-9 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 border border-glider-mint dark:border-glider-mint/30 flex items-center justify-center font-display text-sm font-bold text-glider-olive dark:text-glider-mint overflow-hidden shadow-sm"
             >
-              {user.username.slice(0, 1).toUpperCase()}
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+              ) : (
+                user.username.slice(0, 1).toUpperCase()
+              )}
             </button>
           ) : (
             <button
@@ -184,9 +191,9 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`fixed top-0 left-0 h-screen w-64 z-50 flex flex-col transition-transform duration-200
-          bg-white dark:bg-glider-darkPanel
-          border-r border-glider-border dark:border-glider-darkBorder
+        className={`fixed top-0 left-0 h-screen w-64 z-50 flex flex-col transition-transform duration-300
+          bg-white/95 dark:bg-black/60 backdrop-blur-2xl
+          border-r border-glider-border dark:border-white/5
           ${open ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
         <div className="flex items-center justify-between px-5 py-5">
@@ -210,6 +217,22 @@ export default function Sidebar({
               const className = `${navLinkBase} ${
                 isActive ? navLinkActive : navLinkInactive
               }`
+              if (item.action === 'suggestion') {
+                return (
+                  <li key={item.label}>
+                    <button
+                      onClick={() => {
+                        onSuggestionClick()
+                        setOpen(false)
+                      }}
+                      className={`w-full ${className} text-left`}
+                    >
+                      <span className={navIcon}>{item.icon}</span>
+                      {item.label}
+                    </button>
+                  </li>
+                )
+              }
               return (
                 <li key={item.label}>
                   <a
@@ -273,8 +296,12 @@ export default function Sidebar({
               }}
               className="w-full flex items-center gap-3 p-2.5 rounded-xl bg-glider-light dark:bg-glider-darkPanel2 border border-glider-border dark:border-glider-darkBorder hover:border-glider-olive/40 dark:hover:border-glider-mint/40 transition text-left"
             >
-              <div className="w-9 h-9 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 border border-glider-mint dark:border-glider-mint/30 flex items-center justify-center font-display text-sm font-bold text-glider-olive dark:text-glider-mint shrink-0">
-                {user.username.slice(0, 1).toUpperCase()}
+              <div className="w-9 h-9 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 border border-glider-mint dark:border-glider-mint/30 flex items-center justify-center font-display text-sm font-bold text-glider-olive dark:text-glider-mint shrink-0 overflow-hidden shadow-sm">
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+                ) : (
+                  user.username.slice(0, 1).toUpperCase()
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-semibold text-glider-black dark:text-glider-darkText truncate">

@@ -23,44 +23,44 @@ body {
 /* Dark theme background */
 html.dark body {
   background:
-    radial-gradient(1100px 520px at 8% -10%, rgba(79, 127, 88, 0.30), transparent 60%),
-    radial-gradient(900px 460px at 92% -10%, rgba(163, 200, 224, 0.18), transparent 60%),
-    #0B0F14;
+    radial-gradient(1100px 520px at 8% -10%, rgba(168, 224, 209, 0.12), transparent 60%),
+    radial-gradient(900px 460px at 92% -10%, rgba(79, 127, 88, 0.15), transparent 60%),
+    #050505;
   color: #F5F5F7;
 }
 
 h1, h2, h3, h4, .font-display {
-  font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-  letter-spacing: -0.01em;
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 @layer components {
   .card {
-    @apply bg-white dark:bg-glider-darkPanel
-      border border-glider-border dark:border-glider-darkBorder
-      rounded-2xl shadow-soft;
+    @apply bg-white/80 dark:bg-[#11141A]/60 backdrop-blur-xl
+      border border-glider-border dark:border-white/10
+      rounded-3xl shadow-card transition-all duration-300;
   }
   .btn {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl font-medium transition-all duration-200;
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl font-medium transition-all duration-300;
   }
   .btn-primary {
-    @apply btn bg-glider-olive text-white hover:bg-glider-olive/90 shadow-sm hover:shadow-glow;
+    @apply btn bg-glider-mint text-black hover:bg-[#8CD8C5] shadow-sm hover:-translate-y-0.5 hover:shadow-glowMint dark:shadow-[0_4px_24px_-4px_rgba(168,224,209,0.3)] dark:hover:shadow-glowMint;
   }
   .btn-soft {
-    @apply btn bg-glider-mint text-glider-olive hover:bg-glider-mint/80
-      dark:bg-glider-mint/20 dark:text-glider-mint dark:hover:bg-glider-mint/30;
+    @apply btn bg-glider-mint/10 text-glider-olive hover:bg-glider-mint/20 hover:-translate-y-0.5
+      dark:bg-glider-mint/10 dark:text-glider-mint dark:hover:bg-glider-mint/20;
   }
   .btn-ghost {
-    @apply btn bg-white border border-glider-border text-glider-text hover:border-glider-olive/40 hover:bg-glider-light
-      dark:bg-glider-darkPanel dark:border-glider-darkBorder dark:text-glider-darkText
-      dark:hover:border-glider-mint/40 dark:hover:bg-glider-darkPanel2;
+    @apply btn bg-white/50 border border-glider-border text-glider-text hover:border-glider-olive/40 hover:bg-white hover:-translate-y-0.5
+      dark:bg-white/5 dark:border-white/10 dark:text-glider-darkText
+      dark:hover:border-white/20 dark:hover:bg-white/10 backdrop-blur-md;
   }
   .chip {
-    @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border;
+    @apply inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold tracking-[0.05em] uppercase border backdrop-blur-md;
   }
   .input {
-    @apply w-full bg-white border border-glider-border rounded-xl px-3.5 py-2.5 text-sm text-glider-text placeholder:text-glider-muted/70 outline-none focus:border-glider-olive focus:ring-2 focus:ring-glider-mint/50 transition
-      dark:bg-glider-darkPanel dark:border-glider-darkBorder dark:text-glider-darkText
+    @apply w-full bg-white/50 backdrop-blur-sm border border-glider-border rounded-xl px-4 py-3 text-sm text-glider-text placeholder:text-glider-muted/70 outline-none focus:border-glider-olive focus:ring-2 focus:ring-glider-mint/50 transition
+      dark:bg-black/50 dark:border-white/10 dark:text-glider-darkText
       dark:placeholder:text-glider-darkMuted/60 dark:focus:border-glider-mint dark:focus:ring-glider-mint/30;
   }
 }

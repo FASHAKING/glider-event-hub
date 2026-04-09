@@ -36,12 +36,15 @@ export default function HeroCard({
         <div className="pointer-events-none absolute -bottom-24 -left-10 w-72 h-72 rounded-full bg-glider-sky/30 dark:bg-glider-sky/10 blur-3xl" />
 
         {/* 3D Glider mark, decorative */}
-        <img
-          src="/brand/glider-icon-3d.png"
-          alt=""
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-6 -top-6 w-44 lg:w-56 opacity-90 drop-shadow-xl rotate-[8deg] hidden sm:block"
-        />
+        <div className="absolute -right-10 -top-10 w-52 lg:w-72 hidden sm:block">
+          <div className="absolute inset-0 bg-glider-mint/20 dark:bg-glider-mint/10 rounded-full blur-[60px] animate-pulse-ring" />
+          <img
+            src="/brand/glider-icon-3d.png"
+            alt=""
+            aria-hidden="true"
+            className="relative w-full h-auto opacity-95 drop-shadow-2xl rotate-[8deg] animate-float transform-gpu"
+          />
+        </div>
 
         <div className="relative">
           <span className="chip border-glider-mint bg-glider-mint/40 text-glider-olive dark:border-glider-mint/40 dark:bg-glider-mint/15 dark:text-glider-mint">
@@ -49,11 +52,11 @@ export default function HeroCard({
             Glider Community Event Hub
           </span>
 
-          <h1 className="mt-4 font-display text-4xl lg:text-5xl font-bold tracking-tight text-glider-black dark:text-glider-darkText leading-[1.05]">
-            Your single source of truth for everything happening across the{' '}
+          <h1 className="mt-4 font-display text-4xl lg:text-6xl font-bold tracking-tight text-glider-black dark:text-glider-darkText leading-[1.05]">
+            The unified pulse of the{' '}
             <span className="relative inline-block">
-              <span className="relative z-10 text-glider-olive dark:text-glider-mint">Glider</span>
-              <span className="absolute inset-x-0 bottom-1 h-3 bg-glider-mint/70 dark:bg-glider-mint/25 rounded -z-0" />
+              <span className="relative z-10 text-glider-olive dark:text-glider-mint drop-shadow-sm">Glider</span>
+              <span className="absolute inset-x-0 bottom-1.5 h-3 lg:h-4 bg-glider-mint/40 dark:bg-glider-mint/20 rounded-md -z-0" />
             </span>{' '}
             ecosystem.
           </h1>
@@ -110,14 +113,14 @@ function Stat({
   mono?: boolean
 }) {
   return (
-    <div className="bg-white/80 dark:bg-glider-darkPanel2/80 backdrop-blur border border-glider-border dark:border-glider-darkBorder rounded-xl px-4 py-3">
-      <div className="flex items-center gap-2 text-glider-gray dark:text-glider-darkMuted text-xs font-medium uppercase tracking-wider">
+    <div className="bg-white/60 dark:bg-[#1A1F26]/60 backdrop-blur-md border border-glider-border dark:border-white/10 rounded-2xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
+      <div className="flex items-center gap-2 text-glider-gray dark:text-glider-darkMuted text-xs font-semibold uppercase tracking-wider">
         <span className="text-glider-olive dark:text-glider-mint">{icon}</span>
         {label}
       </div>
       <div
         className={`mt-1 font-display font-bold text-glider-black dark:text-glider-darkText ${
-          mono ? 'text-lg tabular-nums' : 'text-2xl'
+          mono ? 'font-mono text-xl tabular-nums tracking-tight' : 'text-2xl'
         }`}
       >
         {value}

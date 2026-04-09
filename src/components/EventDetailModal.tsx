@@ -10,6 +10,10 @@ import {
   LiveDotIcon,
   getCategoryIcon,
   ClockIcon,
+  LinkedinIcon,
+  XIcon,
+  EmailIcon,
+  MessageIcon,
 } from './Icons'
 
 interface Props {
@@ -44,7 +48,7 @@ function statusLabel(status: EventStatus) {
 }
 
 export default function EventDetailModal({ event, onClose, onRequireAuth }: Props) {
-  const { user, toggleReminder, hasReminder } = useAuth()
+  const { user, toggleReminder, hasReminder, toggleAttendance, hasAttended } = useAuth()
   const [tick, setTick] = useState(0)
 
   // re-render every second so the live countdown stays accurate
@@ -88,225 +92,203 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
   const end = new Date(start.getTime() + event.durationMinutes * 60_000)
   const countdownMs = start.getTime() - Date.now()
   const reminderOn = hasReminder(event.id)
+  const attended = hasAttended(event.id)
 
   const allHosts = [event.host, ...(event.hosts || [])].filter(Boolean)
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-glider-black/40 dark:bg-glider-black/80 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 z-50 bg-[#0A0A0A]/95 backdrop-blur-xl flex items-start justify-center p-4 sm:p-8 overflow-y-auto"
       onClick={onClose}
     >
+      <button onClick={onClose} className="fixed top-6 right-6 w-10 h-10 bg-white/10 hover:bg-white/20 backdrop-blur-md text-white rounded-full flex items-center justify-center transition-colors z-[60]">
+        ×
+      </button>
+
       <div
         onClick={(e) => e.stopPropagation()}
-        className="card w-full max-w-3xl shadow-card my-8 overflow-hidden"
+        className="relative w-full max-w-[1100px] mt-8 mb-auto flex flex-col gap-6 animate-in slide-in-from-bottom-8 fade-in duration-300"
       >
-        {/* Hero / image */}
-        <div
-          className={`relative h-56 sm:h-72 bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center overflow-hidden`}
-        >
-          {event.imageUrl ? (
-            <img
-              src={event.imageUrl}
-              alt={event.title}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          ) : (
-            <CatIcon
-              width={120}
-              height={120}
-              className="text-white/80 drop-shadow-md"
-            />
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
-
-          {/* close */}
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="absolute top-3 right-3 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 text-white text-xl flex items-center justify-center backdrop-blur"
-          >
-            ×
-          </button>
-
-          <span
-            className={`absolute top-4 left-4 chip border-transparent text-[11px] font-bold tracking-wider ${
-              status === 'live'
-                ? 'bg-red-500 text-white'
-                : status === 'past'
-                  ? 'bg-glider-black/70 text-white'
-                  : 'bg-glider-olive text-white dark:bg-glider-mint dark:text-glider-darkBg'
-            }`}
-          >
-            {status === 'live' && (
-              <LiveDotIcon width={10} height={10} className="animate-pulse" />
+        <div className="flex flex-col md:flex-row bg-[#111111] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
+          
+          <div className={`relative w-full md:w-[55%] h-64 md:h-[400px] bg-gradient-to-br ${accentGradients[accent]}`}>
+            {event.imageUrl ? (
+              <img src={event.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-80" />
+            ) : (
+                <div className="absolute inset-0 flex items-center justify-center mix-blend-overlay opacity-30">
+                  <CatIcon width={200} height={200} />
+                </div>
             )}
-            {statusLabel(status)}
-          </span>
-
-          <div className="absolute bottom-4 left-5 right-5 text-white">
-            <div className="text-xs uppercase tracking-wider opacity-90 flex items-center gap-1.5">
-              <CalendarIcon width={12} height={12} />
-              {formatLong(event.startsAt)}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent p-8 flex flex-col justify-center">
+              <span className={`inline-flex items-center gap-2 self-start rounded-full px-3 py-1 text-[11px] font-bold tracking-wider uppercase ${status === 'live' ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' : status === 'past' ? 'bg-white/20 text-white' : 'bg-glider-mint text-black'}`}>
+                {status === 'live' && <LiveDotIcon width={8} height={8} className="animate-pulse" />}
+                {statusLabel(status)}
+              </span>
+              <h2 className="mt-4 font-display text-4xl md:text-5xl font-bold text-white uppercase tracking-tighter leading-none drop-shadow-lg">
+                {event.category} <br/> <span className="text-white/60">EVENT</span>
+              </h2>
+              <div className="mt-2 text-xs text-white/80 font-mono tracking-wide uppercase">
+                {formatLong(event.startsAt)}
+              </div>
             </div>
-            <h2 className="mt-1 font-display text-2xl sm:text-3xl font-bold leading-tight drop-shadow">
-              {event.title}
-            </h2>
           </div>
-        </div>
 
-        {/* Body */}
-        <div className="p-6 sm:p-8 space-y-6">
-          {/* Quick action row */}
-          <div className="flex flex-wrap gap-3">
+          <div className="w-full md:w-[45%] p-8 flex flex-col justify-center relative bg-[#111111]">
+            <div className="absolute inset-0 bg-glider-mint/5 blur-[100px] pointer-events-none" />
+            
+            <span className={`inline-flex items-center gap-1.5 self-start chip border-transparent text-[10px] font-bold tracking-wide mb-4 ${status === 'live' ? 'bg-red-500/20 text-red-500 border border-red-500/30' : 'bg-white/5 text-white/50 border border-white/10'}`}>
+              {status === 'live' && <LiveDotIcon width={8} height={8} className="animate-pulse" />}
+              {statusLabel(status)}
+            </span>
+            <div className="text-glider-mint font-semibold text-sm mb-2">{new Date(event.startsAt).toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit', timeZoneName: 'short'})}, {new Date(event.startsAt).toLocaleDateString(undefined, {month: 'short', day: 'numeric', year: 'numeric'})}</div>
+            <h1 className="font-display text-3xl font-bold text-white leading-tight mb-8">
+              {event.title}
+            </h1>
+            
             <a
               href={event.link}
               target="_blank"
               rel="noreferrer"
-              className={`${
-                status === 'live'
-                  ? 'btn-primary'
-                  : status === 'past'
-                    ? 'btn-ghost'
-                    : 'btn-soft'
-              } text-sm`}
+              className={`w-full max-w-[200px] flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${status === 'live' ? 'bg-[#E53E3E] hover:bg-[#C53030] text-white shadow-[0_0_20px_rgba(229,62,62,0.4)] hover:-translate-y-0.5' : 'bg-glider-mint hover:bg-[#8CD8C5] text-black shadow-glowMint hover:-translate-y-0.5'}`}
             >
-              {status === 'live'
-                ? 'Join Live'
-                : status === 'past'
-                  ? 'View Recap'
-                  : 'Open Event Link'}
-              <ExternalIcon width={14} height={14} />
+              <ExternalIcon width={16} height={16} />
+              {status === 'live' ? 'Join Live' : status === 'past' ? 'View Recap' : 'Join Event'}
             </a>
+          </div>
+        </div>
 
-            <button
-              type="button"
-              onClick={() => {
-                if (!user) {
-                  onRequireAuth()
-                  return
-                }
-                toggleReminder(event.id)
-              }}
-              className={`btn ${
-                reminderOn
-                  ? 'bg-glider-mint text-glider-olive dark:bg-glider-mint/30 dark:text-glider-mint'
-                  : 'bg-white border border-glider-border text-glider-black hover:bg-glider-light dark:bg-glider-darkPanel dark:border-glider-darkBorder dark:text-glider-darkText dark:hover:bg-glider-darkPanel2'
-              } text-sm`}
-            >
-              {reminderOn ? '✓ Reminder On' : 'Set Reminder'}
-            </button>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="w-full lg:w-[65%] flex flex-col gap-6">
+            
+            <div className="bg-[#111111] border border-white/5 rounded-3xl p-6 sm:p-8 shadow-card">
+              <div className="flex flex-wrap gap-2 mb-6">
+                 {event.tags && event.tags.map((t) => (
+                    <span key={t} className="text-[11px] px-3 py-1 rounded-full bg-white/5 border border-white/10 text-white/70 uppercase font-semibold">
+                      #{t}
+                    </span>
+                  ))}
+                  <span className="text-[11px] px-3 py-1 rounded-full bg-glider-mint/10 border border-glider-mint/30 text-glider-mint uppercase font-semibold">
+                    #{event.category}
+                  </span>
+              </div>
+              <div className="text-white/80 whitespace-pre-line leading-relaxed text-[15px]">
+                {event.description || 'No description provided.'}
+              </div>
+            </div>
+
+            <div className="bg-[#111111] border border-white/5 rounded-3xl p-6 sm:p-8 shadow-card relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-glider-mint/5 rounded-full blur-[80px] pointer-events-none" />
+              
+              <div className="flex items-center gap-4 text-white font-bold tracking-tight mb-6">
+                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <CalendarIcon width={18} height={18} className="text-white/60" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-white/50 uppercase tracking-widest leading-none mb-1">
+                    {status === 'live' ? 'LIVE NOW' : status === 'past' ? 'ENDED' : 'STARTS AT'}
+                  </span>
+                  <span>{formatLong(event.startsAt)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 text-white font-bold tracking-tight mb-6">
+                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <PinIcon width={18} height={18} className="text-white/60" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-white/50 uppercase tracking-widest leading-none mb-1">Platform</span>
+                  <span>{event.location || 'Discord / Community Platform'}</span>
+                </div>
+              </div>
+
+               <div className="flex items-center gap-4 text-white font-bold tracking-tight mb-8">
+                <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                  <UserIcon width={18} height={18} className="text-white/60" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-white/50 uppercase tracking-widest leading-none mb-1">Hosted by</span>
+                  <span>{allHosts.join(', ')}</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 pt-6 border-t border-white/10">
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={event.link}
+                    target="_blank"
+                    rel="noreferrer"
+                    className={`flex-1 sm:flex-none px-10 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${status === 'live' ? 'bg-[#E53E3E] hover:bg-[#C53030] text-white shadow-[0_0_20px_rgba(229,62,62,0.4)] hover:-translate-y-0.5' : 'bg-glider-mint hover:bg-[#8CD8C5] text-black shadow-glowMint hover:-translate-y-0.5'}`}
+                  >
+                    <ExternalIcon width={16} height={16} />
+                    {status === 'live' ? 'Join Live' : status === 'past' ? 'View Recap' : 'Join Event'}
+                  </a>
+
+                  {/* Mark as Attended — only for past or live events */}
+                  {(status === 'past' || status === 'live') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!user) {
+                          onRequireAuth()
+                          return
+                        }
+                        toggleAttendance(event.id, event.category)
+                      }}
+                      className={`flex-1 sm:flex-none px-6 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
+                        attended
+                          ? 'bg-glider-olive text-white border border-glider-olive/60 shadow-[0_0_15px_rgba(79,127,88,0.3)]'
+                          : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      {attended ? '✓ Attended' : 'Mark as Attended'}
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-4 font-semibold">
+                  <span className="text-xs text-white/50 uppercase tracking-wider">Share</span>
+                  <button className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-white/50">
+                    <LinkedinIcon width={16} height={16} />
+                  </button>
+                  <button className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-white/50">
+                    <XIcon width={14} height={14} />
+                  </button>
+                  <button className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:text-white transition-colors text-white/50">
+                    <EmailIcon width={16} height={16} />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Tags */}
-          {event.tags && event.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              {event.tags.map((t) => (
-                <span
-                  key={t}
-                  className="text-[11px] px-2.5 py-1 rounded-full bg-glider-sky/25 dark:bg-glider-sky/15 border border-glider-sky/60 dark:border-glider-sky/30 text-[#2b5d82] dark:text-glider-sky uppercase font-semibold"
+          <div className="w-full lg:w-[35%] flex flex-col">
+            <div className="bg-[#111111] border border-white/5 rounded-3xl p-6 shadow-card h-full min-h-[400px] flex flex-col relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-glider-mint to-glider-sky opacity-20" />
+              
+              <div className="flex items-center gap-2 text-white font-bold text-lg mb-6 pb-4 border-b border-white/5">
+                <MessageIcon width={20} height={20} className="text-glider-mint" />
+                Discussion (0)
+              </div>
+
+              <div className="flex-1 flex flex-col gap-4">
+                <button
+                  type="button" 
+                  onClick={() => {
+                    if (!user) onRequireAuth()
+                  }}
+                  className="w-full bg-white/5 border border-white/10 rounded-xl p-4 flex items-center justify-center text-sm font-medium text-white/30 hover:bg-white/10 transition-colors"
                 >
-                  # {t}
-                </span>
-              ))}
-              <span className="text-[11px] px-2.5 py-1 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 border border-glider-mint dark:border-glider-mint/30 text-glider-olive dark:text-glider-mint uppercase font-semibold">
-                # {event.category}
-              </span>
-            </div>
-          )}
+                  Sign in to join the discussion.
+                </button>
 
-          {/* Description */}
-          <div className="text-glider-black dark:text-glider-darkText whitespace-pre-line leading-relaxed">
-            {event.description || 'No description provided.'}
-          </div>
-
-          {/* Meta grid */}
-          <div className="grid sm:grid-cols-2 gap-4">
-            <MetaBlock
-              icon={
-                <CalendarIcon
-                  width={16}
-                  height={16}
-                  className="text-glider-olive dark:text-glider-mint"
-                />
-              }
-              label={status === 'live' ? 'LIVE NOW' : status === 'past' ? 'Ended' : 'Starts'}
-              value={formatLong(event.startsAt)}
-              sub={`Until ${end.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })} (${event.durationMinutes} min)`}
-            />
-            <MetaBlock
-              icon={
-                <PinIcon
-                  width={16}
-                  height={16}
-                  className="text-glider-olive dark:text-glider-mint"
-                />
-              }
-              label="Platform"
-              value={event.location || '—'}
-              sub={event.recurrence && event.recurrence.frequency !== 'none'
-                ? `Recurs ${event.recurrence.frequency} · ${event.recurrence.occurrences + 1} sessions`
-                : undefined}
-            />
-            <MetaBlock
-              icon={
-                <UserIcon
-                  width={16}
-                  height={16}
-                  className="text-glider-olive dark:text-glider-mint"
-                />
-              }
-              label={allHosts.length > 1 ? 'Hosts' : 'Host'}
-              value={allHosts.join(', ')}
-            />
-            <MetaBlock
-              icon={
-                <ClockIcon
-                  width={16}
-                  height={16}
-                  className="text-glider-olive dark:text-glider-mint"
-                />
-              }
-              label={status === 'upcoming' ? 'Starts in' : status === 'live' ? 'Time left' : 'Duration'}
-              value={
-                status === 'upcoming'
-                  ? formatCountdown(countdownMs)
-                  : status === 'live'
-                    ? formatCountdown(end.getTime() - Date.now())
-                    : `${event.durationMinutes} min`
-              }
-              mono
-            />
-          </div>
-
-          {/* Notification hint */}
-          {user ? (
-            Object.keys(user.socials).length > 0 ? (
-              <div className="text-xs text-glider-gray dark:text-glider-darkMuted bg-glider-light dark:bg-glider-darkPanel2 border border-glider-border dark:border-glider-darkBorder rounded-xl px-4 py-3">
-                You'll be pinged on{' '}
-                <span className="font-semibold text-glider-olive dark:text-glider-mint">
-                  {Object.keys(user.socials).join(', ').toUpperCase()}
-                </span>{' '}
-                when this event goes live.
+                <div className="flex-1 flex flex-col items-center justify-center text-center mt-10 opacity-40">
+                  <MessageIcon width={32} height={32} className="mb-4 text-white/50" />
+                  <p className="text-sm text-balance">No comments yet. Be the first<br/>to share your thoughts!</p>
+                </div>
               </div>
-            ) : (
-              <div className="text-xs text-glider-gray dark:text-glider-darkMuted bg-glider-light dark:bg-glider-darkPanel2 border border-glider-border dark:border-glider-darkBorder rounded-xl px-4 py-3">
-                Connect your X / Telegram / Discord in your profile to get pinged
-                when this event starts.
-              </div>
-            )
-          ) : (
-            <div className="text-xs text-glider-gray dark:text-glider-darkMuted bg-glider-light dark:bg-glider-darkPanel2 border border-glider-border dark:border-glider-darkBorder rounded-xl px-4 py-3">
-              <button
-                onClick={onRequireAuth}
-                className="text-glider-olive dark:text-glider-mint font-semibold underline"
-              >
-                Sign up
-              </button>{' '}
-              to set reminders and get notified across X, Telegram, and Discord
-              when this event starts.
             </div>
-          )}
+          </div>
+          
         </div>
       </div>
     </div>

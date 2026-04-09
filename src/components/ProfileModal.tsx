@@ -98,9 +98,14 @@ export default function ProfileModal({
     disconnectSocial,
     toggleSocialNotifications,
     refresh,
+    updateProfile,
   } = useAuth()
   const [draftHandles, setDraftHandles] = useState<Record<string, string>>({})
   const [tab, setTab] = useState<'socials' | 'history'>('socials')
+  const [isEditing, setIsEditing] = useState(false)
+  const [editUsername, setEditUsername] = useState(user?.username || '')
+  const [editAvatarUrl, setEditAvatarUrl] = useState(user?.avatarUrl || '')
+  const [saving, setSaving] = useState(false)
   const [telegramCode, setTelegramCode] = useState<string | null>(null)
   const [telegramPolling, setTelegramPolling] = useState(false)
   const [history, setHistory] = useState<NotificationRecord[]>([])
@@ -175,6 +180,30 @@ export default function ProfileModal({
     }
   }
 
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setEditAvatarUrl(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleSaveProfile = async () => {
+    setSaving(true)
+    const result = await updateProfile({
+      username: editUsername,
+      avatarUrl: editAvatarUrl,
+    })
+    setSaving(false)
+    if (result.ok) {
+      setIsEditing(false)
+    } else {
+      alert(result.error)
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 bg-glider-black/40 dark:bg-glider-black/80 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto"
@@ -185,28 +214,115 @@ export default function ProfileModal({
         className="card w-full max-w-2xl my-8 shadow-card overflow-hidden"
       >
         {/* header */}
-        <div className="p-6 border-b border-glider-border dark:border-glider-darkBorder flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 border border-glider-mint dark:border-glider-mint/30 flex items-center justify-center font-display text-lg font-bold text-glider-olive dark:text-glider-mint">
-              {user.username.slice(0, 1).toUpperCase()}
+        <div className="p-6 border-b border-glider-border dark:border-glider-darkBorder">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative group">
+                <div className="w-16 h-16 rounded-full bg-glider-mint/40 dark:bg-glider-mint/15 border-2 border-glider-mint dark:border-glider-mint/30 flex items-center justify-center font-display text-2xl font-bold text-glider-olive dark:text-glider-mint overflow-hidden shadow-sm">
+                  {user.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+                  ) : (
+                    user.username.slice(0, 1).toUpperCase()
+                  )}
+                </div>
+                {isEditing && (
+                  <label className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-white">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                      <polyline points="17 8 12 3 7 8" />
+                      <line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+                  </label>
+                )}
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <input
+                      value={editUsername}
+                      onChange={(e) => setEditUsername(e.target.value)}
+                      className="input !py-1 text-lg font-bold w-full max-w-[200px]"
+                      placeholder="Username"
+                      autoFocus
+                    />
+                    <p className="text-xs text-glider-gray dark:text-glider-darkMuted">
+                      {user.email}
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <h2 className="font-display text-2xl font-bold text-glider-black dark:text-glider-darkText">
+                      {user.username}
+                    </h2>
+                    <p className="text-sm text-glider-gray dark:text-glider-darkMuted">
+                      {user.email}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
-            <div>
-              <h2 className="font-display text-xl font-bold text-glider-black dark:text-glider-darkText">
-                {user.username}
-              </h2>
-              <p className="text-xs text-glider-gray dark:text-glider-darkMuted">
-                {user.email}
-              </p>
+
+            <div className="flex items-center gap-2">
+              {isEditing ? (
+                <>
+                  <button
+                    onClick={() => {
+                      setIsEditing(false)
+                      setEditUsername(user.username)
+                      setEditAvatarUrl(user.avatarUrl || '')
+                    }}
+                    className="btn-ghost text-xs py-1.5 px-3"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveProfile}
+                    disabled={saving}
+                    className="btn-primary text-xs py-1.5 px-4"
+                  >
+                    {saving ? 'Saving...' : 'Save'}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="btn-ghost text-xs py-1.5 px-3 flex items-center gap-1.5"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                  </svg>
+                  Edit Profile
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="text-glider-gray dark:text-glider-darkMuted hover:text-glider-black dark:hover:text-glider-darkText text-2xl leading-none w-8 h-8 rounded-full hover:bg-glider-light dark:hover:bg-glider-darkPanel2 flex items-center justify-center -mr-2"
+                aria-label="Close"
+              >
+                ×
+              </button>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-glider-gray dark:text-glider-darkMuted hover:text-glider-black dark:hover:text-glider-darkText text-2xl leading-none w-8 h-8 rounded-full hover:bg-glider-light dark:hover:bg-glider-darkPanel2 flex items-center justify-center"
-            aria-label="Close"
-          >
-            ×
-          </button>
+          
+          {isEditing && (
+            <div className="mt-4 flex items-center gap-3">
+              <div className="flex-1">
+                <label className="block text-[10px] uppercase tracking-wider text-glider-gray dark:text-glider-darkMuted font-semibold mb-1">
+                  Avatar URL (Optional)
+                </label>
+                <input
+                  value={editAvatarUrl}
+                  onChange={(e) => setEditAvatarUrl(e.target.value)}
+                  className="input !py-1 text-xs w-full"
+                  placeholder="https://example.com/photo.jpg"
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* tabs */}

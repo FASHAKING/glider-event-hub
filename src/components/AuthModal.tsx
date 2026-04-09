@@ -87,7 +87,7 @@ export default function AuthModal({ open, onClose, initialMode = 'signin' }: Pro
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="input"
-                placeholder="@yourhandle"
+                placeholder="Enter username"
               />
             </Field>
           )}

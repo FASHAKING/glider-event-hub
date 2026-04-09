@@ -4,10 +4,12 @@ import LiveBanner from './components/LiveBanner'
 import HeroCard from './components/HeroCard'
 import EventList from './components/EventList'
 import CalendarPage from './components/CalendarPage'
+import LeaderboardPage from './components/LeaderboardPage'
 import SubmitEventModal from './components/SubmitEventModal'
 import EventDetailModal from './components/EventDetailModal'
 import AuthModal from './components/AuthModal'
 import ProfileModal from './components/ProfileModal'
+import SuggestionModal from './components/SuggestionModal'
 import Footer from './components/Footer'
 import type { GliderEvent } from './types'
 import { expandRecurringEvents, getEventStatus } from './types'
@@ -23,7 +25,7 @@ const TELEGRAM_BOT_USERNAME = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as
   | undefined
 
 /** Top-level in-app views. Anchors like leaderboard stay as hash scrolls. */
-export type AppView = 'home' | 'calendar'
+export type AppView = 'home' | 'calendar' | 'leaderboard'
 
 function AppInner() {
   const { user } = useAuth()
@@ -33,6 +35,7 @@ function AppInner() {
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
   const [profileOpen, setProfileOpen] = useState(false)
+  const [suggestionOpen, setSuggestionOpen] = useState(false)
   const [activeEvent, setActiveEvent] = useState<GliderEvent | null>(null)
   const [, forceTick] = useState(0)
 
@@ -79,6 +82,7 @@ function AppInner() {
           }
           setSubmitOpen(true)
         }}
+        onSuggestionClick={() => setSuggestionOpen(true)}
         onSignInClick={() => openAuth('signin')}
         onSignUpClick={() => openAuth('signup')}
         onProfileClick={() => setProfileOpen(true)}
@@ -110,11 +114,16 @@ function AppInner() {
             />
             <EventList events={allEvents} onOpenEvent={setActiveEvent} />
           </>
-        ) : (
+        ) : view === 'calendar' ? (
           <CalendarPage
             events={allEvents}
             onOpenEvent={setActiveEvent}
             onBack={() => setView('home')}
+          />
+        ) : (
+          <LeaderboardPage
+            events={allEvents}
+            onSignUpClick={() => openAuth('signup')}
           />
         )}
       </main>
@@ -131,6 +140,18 @@ function AppInner() {
             return { ok: true as const }
           }
           return { ok: false as const, error: result.error }
+        }}
+      />
+
+      <SuggestionModal
+        open={suggestionOpen}
+        onClose={() => setSuggestionOpen(false)}
+        onSubmit={async (payload) => {
+          // Log suggestion to console for now, or save to backend later
+          console.log('Suggestion submitted:', payload)
+          // Simulate network request
+          await new Promise(resolve => setTimeout(resolve, 600))
+          return { ok: true }
         }}
       />
 

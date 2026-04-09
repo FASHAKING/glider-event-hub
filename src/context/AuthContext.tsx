@@ -165,6 +165,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
   const [attendedEvents, setAttendedEvents] = useState<string[]>([])
   const [eventCategories, setEventCategories] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
+  const [leaderboardUsers, setLeaderboardUsers] = useState<UserAccount[]>([])
 
   const loadProfileData = useCallback(async (uid: string) => {
     // Try to load with avatar_url first
@@ -237,6 +238,46 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     setReminders((rems || []).map((r) => r.event_id))
   }, [sb])
 
+  const loadAllUsers = useCallback(async () => {
+    const { data: profiles } = await sb
+      .from('profiles')
+      .select('id, username, email, avatar_url')
+      .limit(200)
+    if (!profiles || profiles.length === 0) return
+
+    const { data: allAttendance } = await sb
+      .from('attendance')
+      .select('user_id, event_id, category')
+
+    const attendanceByUser: Record<string, { events: string[]; categories: Record<string, string> }> = {}
+    for (const a of allAttendance || []) {
+      if (!attendanceByUser[a.user_id]) {
+        attendanceByUser[a.user_id] = { events: [], categories: {} }
+      }
+      attendanceByUser[a.user_id].events.push(a.event_id)
+      attendanceByUser[a.user_id].categories[a.event_id] = a.category
+    }
+
+    const users: UserAccount[] = profiles.map((p) => {
+      const att = attendanceByUser[p.id] || { events: [], categories: {} }
+      const partial: UserAccount = {
+        id: p.id,
+        username: p.username,
+        email: p.email,
+        avatarUrl: p.avatar_url ?? undefined,
+        passwordHash: '',
+        createdAt: '',
+        socials: {},
+        remindersFor: [],
+        attendedEvents: att.events,
+        earnedBadges: [],
+      }
+      partial.earnedBadges = recalcBadges(partial, att.events, att.categories)
+      return partial
+    })
+    setLeaderboardUsers(users)
+  }, [sb])
+
   useEffect(() => {
     let alive = true
     sb.auth.getSession().then(({ data }) => {
@@ -248,6 +289,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false)
       }
     })
+    loadAllUsers()
     const { data: sub } = sb.auth.onAuthStateChange((_event, sess) => {
       setSession(sess)
       if (sess?.user) {
@@ -266,7 +308,8 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
 
   const refresh = useCallback(async () => {
     if (session?.user) await loadProfileData(session.user.id)
-  }, [session, loadProfileData])
+    await loadAllUsers()
+  }, [session, loadProfileData, loadAllUsers])
 
   const signUp = useCallback<AuthState['signUp']>(
     async (username, email, password) => {
@@ -466,7 +509,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     authUser: session?.user || null,
     loading,
     configured: true,
-    allUsers: user ? [user] : [],
+    allUsers: leaderboardUsers,
     signUp,
     signIn,
     signOut,

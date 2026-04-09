@@ -58,6 +58,21 @@ export default {
         '2xl': '1rem',
         '3xl': '1.5rem',
       },
+      keyframes: {
+        'pulse-ring': {
+          '0%': { transform: 'scale(1)', opacity: '0.6' },
+          '50%': { transform: 'scale(1.15)', opacity: '0' },
+          '100%': { transform: 'scale(1)', opacity: '0.6' },
+        },
+        'float': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-6px)' },
+        },
+      },
+      animation: {
+        'pulse-ring': 'pulse-ring 2.5s ease-in-out infinite',
+        'float': 'float 4s ease-in-out infinite',
+      },
     },
   },
   plugins: [],

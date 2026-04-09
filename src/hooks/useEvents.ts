@@ -171,8 +171,26 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
         .insert(insert)
         .select('*')
         .single()
-      if (insErr || !data) {
-        return { ok: false, error: insErr?.message || 'Failed to insert event.' }
+      if (insErr) {
+        // If the 'hosts' column is missing from the DB, retry without it
+        if (insErr.message.includes('hosts') && insErr.message.includes('schema cache')) {
+          const { hosts: _h, ...insertWithoutHosts } = insert
+          const { data: retryData, error: retryErr } = await supabase
+            .from('events')
+            .insert(insertWithoutHosts)
+            .select('*')
+            .single()
+          if (retryErr || !retryData) {
+            return { ok: false, error: retryErr?.message || 'Failed to insert event.' }
+          }
+          const created = rowToEvent(retryData)
+          setEvents((prev) => [...prev, created])
+          return { ok: true, event: created }
+        }
+        return { ok: false, error: insErr.message }
+      }
+      if (!data) {
+        return { ok: false, error: 'Failed to insert event.' }
       }
       const created = rowToEvent(data)
       setEvents((prev) => [...prev, created])

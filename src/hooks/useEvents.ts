@@ -141,11 +141,17 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
             upsert: false,
             contentType: input.imageFile.type,
           })
-        if (upErr) return { ok: false, error: upErr.message }
-        const { data: publicUrlData } = supabase.storage
-          .from(EVENT_BUCKET)
-          .getPublicUrl(path)
-        imageUrl = publicUrlData.publicUrl
+        if (upErr) {
+          // Storage upload failed (likely missing bucket or RLS policies).
+          // Continue without the image rather than blocking the submission.
+          console.warn('Image upload failed, submitting without image:', upErr.message)
+          imageUrl = undefined
+        } else {
+          const { data: publicUrlData } = supabase.storage
+            .from(EVENT_BUCKET)
+            .getPublicUrl(path)
+          imageUrl = publicUrlData.publicUrl
+        }
       }
 
       const insert: Database['public']['Tables']['events']['Insert'] = {

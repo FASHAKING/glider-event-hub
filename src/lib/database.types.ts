@@ -174,6 +174,28 @@ export interface Database {
         >
         Relationships: []
       }
+      comments: {
+        Row: {
+          id: string
+          event_id: string
+          user_id: string
+          username: string
+          body: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          event_id: string
+          user_id: string
+          username: string
+          body: string
+          created_at?: string
+        }
+        Update: Partial<
+          Database['public']['Tables']['comments']['Insert']
+        >
+        Relationships: []
+      }
     }
     Views: Record<string, never>
     Functions: Record<string, never>

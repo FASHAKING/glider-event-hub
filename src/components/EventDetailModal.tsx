@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { GliderEvent, EventAccent, EventStatus } from '../types'
-import { formatCountdown, getEventStatus } from '../types'
+import { getEventStatus } from '../types'
 import { useAuth } from '../context/AuthContext'
 import {
   CalendarIcon,
@@ -9,7 +9,7 @@ import {
   ExternalIcon,
   LiveDotIcon,
   getCategoryIcon,
-  ClockIcon,
+
   LinkedinIcon,
   XIcon,
   EmailIcon,
@@ -48,7 +48,7 @@ function statusLabel(status: EventStatus) {
 }
 
 export default function EventDetailModal({ event, onClose, onRequireAuth }: Props) {
-  const { user, toggleReminder, hasReminder, toggleAttendance, hasAttended } = useAuth()
+  const { user, toggleAttendance, hasAttended } = useAuth()
   const [tick, setTick] = useState(0)
 
   // re-render every second so the live countdown stays accurate
@@ -88,10 +88,6 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
 
   const CatIcon = getCategoryIcon(event.category)
   const accent = event.accent || 'mint'
-  const start = new Date(event.startsAt)
-  const end = new Date(start.getTime() + event.durationMinutes * 60_000)
-  const countdownMs = start.getTime() - Date.now()
-  const reminderOn = hasReminder(event.id)
   const attended = hasAttended(event.id)
 
   const allHosts = [event.host, ...(event.hosts || [])].filter(Boolean)
@@ -291,41 +287,6 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
           
         </div>
       </div>
-    </div>
-  )
-}
-
-function MetaBlock({
-  icon,
-  label,
-  value,
-  sub,
-  mono,
-}: {
-  icon: JSX.Element
-  label: string
-  value: string
-  sub?: string
-  mono?: boolean
-}) {
-  return (
-    <div className="bg-glider-light dark:bg-glider-darkPanel2 border border-glider-border dark:border-glider-darkBorder rounded-xl px-4 py-3">
-      <div className="flex items-center gap-2 text-[10px] uppercase tracking-wider text-glider-gray dark:text-glider-darkMuted font-semibold">
-        {icon}
-        {label}
-      </div>
-      <div
-        className={`mt-1 font-semibold text-glider-black dark:text-glider-darkText ${
-          mono ? 'tabular-nums text-base' : 'text-sm'
-        }`}
-      >
-        {value}
-      </div>
-      {sub && (
-        <div className="text-xs text-glider-gray dark:text-glider-darkMuted mt-0.5">
-          {sub}
-        </div>
-      )}
     </div>
   )
 }

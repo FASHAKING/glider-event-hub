@@ -66,6 +66,7 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
   const [imgFailed, setImgFailed] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [posting, setPosting] = useState(false)
+  const [commentError, setCommentError] = useState<string | null>(null)
   const { comments, loading: commentsLoading, postComment } = useComments(
     event?.id || null,
     user?.id || null,
@@ -294,27 +295,37 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
                     onSubmit={async (e) => {
                       e.preventDefault()
                       if (!commentText.trim() || posting) return
+                      setCommentError(null)
                       setPosting(true)
                       const result = await postComment(commentText)
-                      if (result.ok) setCommentText('')
+                      if (result.ok) {
+                        setCommentText('')
+                      } else {
+                        setCommentError(result.error)
+                      }
                       setPosting(false)
                     }}
-                    className="flex gap-2"
+                    className="flex flex-col gap-2"
                   >
-                    <input
-                      type="text"
-                      value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      placeholder="Write a comment..."
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-glider-mint/50 transition-colors"
-                    />
-                    <button
-                      type="submit"
-                      disabled={!commentText.trim() || posting}
-                      className="px-4 py-2.5 bg-glider-mint text-black rounded-xl text-sm font-bold hover:bg-[#8CD8C5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
-                    >
-                      {posting ? '...' : 'Post'}
-                    </button>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={commentText}
+                        onChange={(e) => setCommentText(e.target.value)}
+                        placeholder="Write a comment..."
+                        className="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white placeholder-white/30 focus:outline-none focus:border-glider-mint/50 transition-colors"
+                      />
+                      <button
+                        type="submit"
+                        disabled={!commentText.trim() || posting}
+                        className="px-4 py-2.5 bg-glider-mint text-black rounded-xl text-sm font-bold hover:bg-[#8CD8C5] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+                      >
+                        {posting ? '...' : 'Post'}
+                      </button>
+                    </div>
+                    {commentError && (
+                      <p className="text-xs text-red-400 px-1">{commentError}</p>
+                    )}
                   </form>
                 ) : (
                   <button

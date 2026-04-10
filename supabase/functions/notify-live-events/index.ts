@@ -134,9 +134,21 @@ Deno.serve(async () => {
       .from('reminders')
       .select('user_id')
       .eq('event_id', event.id)
-    if (!reminders || reminders.length === 0) continue
 
-    const userIds = reminders.map((r) => r.user_id)
+    // Find users who opted into all live event notifications
+    const { data: globalUsers } = await admin
+      .from('profiles')
+      .select('id')
+      .eq('notify_all_live', true)
+
+    // Merge and deduplicate user IDs from both sources
+    const userIds = [
+      ...new Set([
+        ...(reminders || []).map((r) => r.user_id),
+        ...(globalUsers || []).map((u) => u.id),
+      ]),
+    ]
+    if (userIds.length === 0) continue
 
     // Find every delivery channel (telegram + email) enabled for those users
     const { data: socials } = await admin

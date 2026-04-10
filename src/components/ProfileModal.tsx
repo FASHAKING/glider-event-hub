@@ -446,8 +446,8 @@ export default function ProfileModal({
                         <div className="text-xs text-glider-gray dark:text-glider-darkMuted truncate">
                           {p.alwaysOn ? (
                             <>
-                              Sending to{' '}
-                              <span className="font-mono text-glider-olive dark:text-glider-mint">
+                              {effectiveConn.notifications ? 'Sending to' : 'Notifications off ·'}{' '}
+                              <span className={`font-mono ${effectiveConn.notifications ? 'text-glider-olive dark:text-glider-mint' : 'text-glider-gray dark:text-glider-darkMuted'}`}>
                                 {effectiveConn.handle}
                               </span>
                             </>
@@ -505,14 +505,14 @@ export default function ProfileModal({
 
                     {effectiveConn ? (
                       <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-1.5 text-xs text-glider-gray dark:text-glider-darkMuted cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={effectiveConn.notifications}
-                            onChange={() => toggleSocialNotifications(p.key)}
-                          />
-                          Notify
-                        </label>
+                        <button
+                          type="button"
+                          onClick={() => toggleSocialNotifications(p.key)}
+                          className={`relative w-11 h-6 rounded-full transition-colors ${effectiveConn.notifications ? 'bg-glider-olive dark:bg-glider-mint' : 'bg-gray-300 dark:bg-gray-600'}`}
+                          title={effectiveConn.notifications ? 'Notifications on' : 'Notifications off'}
+                        >
+                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${effectiveConn.notifications ? 'left-[22px]' : 'left-0.5'}`} />
+                        </button>
                         {!p.alwaysOn && (
                           <button
                             type="button"

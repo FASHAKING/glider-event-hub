@@ -30,7 +30,8 @@ export type AppView = 'home' | 'calendar' | 'leaderboard'
 
 function AppInner() {
   const { user } = useAuth()
-  const { events, submitEvent, updateEvent, deleteEvent, toggleFeatured } = useEvents(user?.id || null)
+  const isAdmin = user?.isAdmin || false
+  const { events, submitEvent, updateEvent, deleteEvent, toggleFeatured, approveEvent, rejectEvent } = useEvents(user?.id || null, isAdmin)
   const [view, setView] = useState<AppView>('home')
   const [submitOpen, setSubmitOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
@@ -57,15 +58,21 @@ function AppInner() {
   // notification dispatcher hook
   useLiveEventNotifications(allEvents)
 
-  const liveEvent = allEvents.find((e) => getEventStatus(e) === 'live')
+  // Only approved events should drive the live banner and hero stats
+  const approvedEvents = useMemo(
+    () => allEvents.filter((e) => e.status !== 'pending' && e.status !== 'rejected'),
+    [allEvents],
+  )
+
+  const liveEvent = approvedEvents.find((e) => getEventStatus(e) === 'live')
 
   const nextEvent = useMemo(() => {
-    return allEvents
+    return approvedEvents
       .filter((e) => getEventStatus(e) === 'upcoming')
       .sort(
         (a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime(),
       )[0]
-  }, [allEvents])
+  }, [approvedEvents])
 
   const openAuth = (mode: 'signin' | 'signup' = 'signin') => {
     setAuthMode(mode)
@@ -103,7 +110,7 @@ function AppInner() {
         {view === 'home' ? (
           <>
             <HeroCard
-              total={allEvents.length}
+              total={approvedEvents.length}
               members={COMMUNITY_MEMBERS}
               nextEvent={nextEvent}
               onSubmitClick={() => {
@@ -114,11 +121,11 @@ function AppInner() {
                 setSubmitOpen(true)
               }}
             />
-            <EventList events={allEvents} onOpenEvent={setActiveEvent} />
+            <EventList events={isAdmin ? allEvents : approvedEvents} onOpenEvent={setActiveEvent} isAdmin={isAdmin} />
           </>
         ) : view === 'calendar' ? (
           <CalendarPage
-            events={allEvents}
+            events={approvedEvents}
             onOpenEvent={setActiveEvent}
             onBack={() => setView('home')}
           />
@@ -135,10 +142,11 @@ function AppInner() {
       <SubmitEventModal
         open={submitOpen}
         onClose={() => setSubmitOpen(false)}
+        isAdmin={isAdmin}
         onSubmit={async (payload) => {
           const result = await submitEvent(payload)
           if (result.ok) {
-            setSubmitOpen(false)
+            if (isAdmin) setSubmitOpen(false)
             return { ok: true as const }
           }
           return { ok: false as const, error: result.error }
@@ -175,6 +183,16 @@ function AppInner() {
           setActiveEvent((prev) =>
             prev && prev.id === id ? { ...prev, isFeatured: featured } : prev,
           )
+        }}
+        onApproveEvent={async (id) => {
+          await approveEvent(id)
+          setActiveEvent((prev) =>
+            prev && prev.id === id ? { ...prev, status: 'approved' } : prev,
+          )
+        }}
+        onRejectEvent={async (id) => {
+          await rejectEvent(id)
+          setActiveEvent(null)
         }}
       />
 

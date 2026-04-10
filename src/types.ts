@@ -59,6 +59,8 @@ export interface GliderEvent {
   recurrence?: EventRecurrence
   /** Whether this event is pinned/featured at the top */
   isFeatured?: boolean
+  /** Approval status: pending submissions await admin review */
+  status?: 'pending' | 'approved' | 'rejected'
 }
 
 export type EventStatus = 'live' | 'upcoming' | 'past'
@@ -348,4 +350,8 @@ export interface UserAccount {
   isAdmin?: boolean
   /** whether this user wants live-event notifications for all events (not just reminded ones) */
   notifyAllLive?: boolean
+  /** whether all notifications are globally muted */
+  notificationsMuted?: boolean
+  /** event IDs the user has expressed interest in */
+  interestedIn?: string[]
 }

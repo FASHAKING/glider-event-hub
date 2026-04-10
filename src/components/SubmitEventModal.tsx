@@ -9,6 +9,7 @@ export interface SubmitEventPayload extends Omit<GliderEvent, 'id'> {
 interface Props {
   open: boolean
   onClose: () => void
+  isAdmin?: boolean
   onSubmit: (
     e: SubmitEventPayload,
   ) => Promise<{ ok: true } | { ok: false; error: string }> | void
@@ -50,7 +51,7 @@ const ORDINAL_OPTIONS = [
 
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024 // 1.5 MB
 
-export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
+export default function SubmitEventModal({ open, onClose, isAdmin, onSubmit }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [hostsCsv, setHostsCsv] = useState('')
@@ -68,6 +69,7 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
   const [weekOfMonth, setWeekOfMonth] = useState<number>(1)
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitted, setSubmitted] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!open) return null
@@ -89,6 +91,7 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
     setDaysOfWeek([])
     setWeekOfMonth(1)
     setSubmitError(null)
+    setSubmitted(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -163,12 +166,51 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
         setSubmitting(false)
         return
       }
-      reset()
+      if (isAdmin) {
+        reset()
+      } else {
+        // Non-admin: show the pending review message
+        setSubmitted(true)
+      }
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : 'Failed to submit.')
     } finally {
       setSubmitting(false)
     }
+  }
+
+  if (submitted && !isAdmin) {
+    return (
+      <div
+        className="fixed inset-0 z-50 bg-glider-black/30 dark:bg-glider-black/70 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto"
+        onClick={() => { reset(); onClose() }}
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="card w-full max-w-lg p-8 shadow-card my-8 text-center space-y-4"
+        >
+          <div className="w-16 h-16 mx-auto rounded-full bg-glider-mint/20 dark:bg-glider-mint/10 flex items-center justify-center">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-glider-olive dark:text-glider-mint">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <h2 className="font-display text-2xl font-bold text-glider-black dark:text-glider-darkText">
+            Submitted for Review
+          </h2>
+          <p className="text-sm text-glider-gray dark:text-glider-darkMuted">
+            Your event has been submitted and is awaiting admin approval. Once approved, it will appear on the hub for everyone to see.
+          </p>
+          <button
+            type="button"
+            onClick={() => { reset(); onClose() }}
+            className="btn-primary text-sm mx-auto"
+          >
+            Got it
+          </button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -187,7 +229,9 @@ export default function SubmitEventModal({ open, onClose, onSubmit }: Props) {
               Submit an Event
             </h2>
             <p className="text-sm text-glider-gray dark:text-glider-darkMuted mt-0.5">
-              Share a Glider community event with the hub.
+              {isAdmin
+                ? 'Submit an event that will go live immediately.'
+                : 'Submit an event for admin review. Once approved, it will appear on the hub.'}
             </p>
           </div>
           <button

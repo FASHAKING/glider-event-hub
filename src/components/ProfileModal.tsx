@@ -97,6 +97,8 @@ export default function ProfileModal({
     connectSocial,
     disconnectSocial,
     toggleSocialNotifications,
+    notificationsMuted,
+    toggleNotificationsMuted,
     toggleNotifyAllLive,
     refresh,
     updateProfile,
@@ -350,7 +352,46 @@ export default function ProfileModal({
         <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
           {tab === 'socials' ? (
             <>
-              <p className="text-sm text-glider-gray dark:text-glider-darkMuted">
+              {/* Global notification mute toggle */}
+              <div className={`flex items-center justify-between p-4 rounded-xl border ${notificationsMuted ? 'bg-red-500/10 border-red-500/30' : 'bg-glider-light dark:bg-glider-darkPanel2 border-glider-border dark:border-glider-darkBorder'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${notificationsMuted ? 'bg-red-500/20 text-red-400' : 'bg-glider-olive/20 dark:bg-glider-mint/15 text-glider-olive dark:text-glider-mint'}`}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      {notificationsMuted ? (
+                        <>
+                          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                          <path d="M18.63 13A17.89 17.89 0 0 1 18 8"/>
+                          <path d="M6.26 6.26A5.86 5.86 0 0 0 6 8c0 7-3 9-3 9h14"/>
+                          <path d="M18 8a6 6 0 0 0-9.33-5"/>
+                          <line x1="1" y1="1" x2="23" y2="23"/>
+                        </>
+                      ) : (
+                        <>
+                          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                        </>
+                      )}
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-sm text-glider-black dark:text-glider-darkText">
+                      {notificationsMuted ? 'Notifications Muted' : 'Notifications Active'}
+                    </div>
+                    <div className="text-xs text-glider-gray dark:text-glider-darkMuted">
+                      {notificationsMuted ? 'You won\'t receive any notifications.' : 'You\'ll receive notifications on connected platforms.'}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => toggleNotificationsMuted()}
+                  className={`relative w-11 h-6 rounded-full transition-colors ${notificationsMuted ? 'bg-red-500/60' : 'bg-glider-olive dark:bg-glider-mint'}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${notificationsMuted ? 'left-0.5' : 'left-[22px]'}`} />
+                </button>
+              </div>
+
+              <p className={`text-sm text-glider-gray dark:text-glider-darkMuted ${notificationsMuted ? 'opacity-50' : ''}`}>
                 Connect your accounts to get notified across X, Telegram, and
                 Discord when events you're tracking go live or are updated.
               </p>

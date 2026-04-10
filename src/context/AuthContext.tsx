@@ -60,6 +60,10 @@ interface AuthState {
   hasReminder: (eventId: string) => boolean
   toggleAttendance: (eventId: string, category: string) => Promise<void>
   hasAttended: (eventId: string) => boolean
+  toggleInterest: (eventId: string, category: string) => Promise<void>
+  hasInterest: (eventId: string) => boolean
+  notificationsMuted: boolean
+  toggleNotificationsMuted: () => Promise<void>
   /** Force a refresh of profile/socials/reminders from the backend */
   refresh: () => Promise<void>
   /** Update user profile (username and/or avatarUrl) */
@@ -163,11 +167,14 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     avatar_url?: string | null
     is_admin?: boolean
     notify_all_live?: boolean
+    notifications_muted?: boolean
   } | null>(null)
   const [socials, setSocials] = useState<SocialConnections>({})
   const [reminders, setReminders] = useState<string[]>([])
   const [attendedEvents, setAttendedEvents] = useState<string[]>([])
   const [eventCategories, setEventCategories] = useState<Record<string, string>>({})
+  const [interests, setInterests] = useState<string[]>([])
+  const [notificationsMuted, setNotificationsMuted] = useState(false)
   const [loading, setLoading] = useState(true)
   const [leaderboardUsers, setLeaderboardUsers] = useState<UserAccount[]>([])
 
@@ -175,7 +182,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     // Try to load with avatar_url first
     let { data: prof, error: profError } = await sb
       .from('profiles')
-      .select('id, username, email, avatar_url, is_admin, notify_all_live')
+      .select('id, username, email, avatar_url, is_admin, notify_all_live, notifications_muted')
       .eq('id', uid)
       .maybeSingle()
 
@@ -187,16 +194,19 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
         .select('id, username, email')
         .eq('id', uid)
         .maybeSingle()
-      prof = fallbackProf ? { ...fallbackProf, avatar_url: null, is_admin: false, notify_all_live: false } : null
+      prof = fallbackProf ? { ...fallbackProf, avatar_url: null, is_admin: false, notify_all_live: false, notifications_muted: false } : null
     }
 
-    const [{ data: socs }, { data: rems }, { data: attends }] = await Promise.all([
+    const [{ data: socs }, { data: rems }, { data: attends }, { data: ints }] = await Promise.all([
       sb.from('social_connections').select('*').eq('user_id', uid),
       sb.from('reminders').select('event_id').eq('user_id', uid),
       sb.from('attendance').select('event_id, category').eq('user_id', uid),
+      sb.from('interests').select('event_id').eq('user_id', uid),
     ])
-    
+
     setProfile(prof || null)
+    setNotificationsMuted(prof?.notifications_muted || false)
+    setInterests((ints || []).map((i) => i.event_id))
     
     const catMap: Record<string, string> = {}
     if (attends) {
@@ -478,8 +488,10 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
       earnedBadges: badges,
       isAdmin: profile.is_admin || false,
       notifyAllLive: profile.notify_all_live || false,
+      notificationsMuted: notificationsMuted,
+      interestedIn: interests,
     }
-  }, [session, profile, socials, reminders, attendedEvents, eventCategories])
+  }, [session, profile, socials, reminders, attendedEvents, eventCategories, notificationsMuted, interests])
 
   const toggleAttendance = useCallback<AuthState['toggleAttendance']>(
     async (eventId, category) => {
@@ -510,6 +522,54 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     [attendedEvents],
   )
 
+  const toggleInterest = useCallback<AuthState['toggleInterest']>(
+    async (eventId, category) => {
+      if (!session?.user) return
+      const has = interests.includes(eventId)
+      if (has) {
+        await sb
+          .from('interests')
+          .delete()
+          .eq('user_id', session.user.id)
+          .eq('event_id', eventId)
+        // Also remove the reminder
+        await sb
+          .from('reminders')
+          .delete()
+          .eq('user_id', session.user.id)
+          .eq('event_id', eventId)
+      } else {
+        await sb
+          .from('interests')
+          .insert({ user_id: session.user.id, event_id: eventId, category })
+        // Also set a reminder
+        await sb
+          .from('reminders')
+          .upsert({ user_id: session.user.id, event_id: eventId }, { onConflict: 'user_id,event_id' })
+      }
+      await refresh()
+    },
+    [sb, session, interests, refresh],
+  )
+
+  const hasInterest = useCallback(
+    (eventId: string) => interests.includes(eventId),
+    [interests],
+  )
+
+  const toggleNotificationsMuted = useCallback<AuthState['toggleNotificationsMuted']>(
+    async () => {
+      if (!session?.user) return
+      const newVal = !notificationsMuted
+      await sb
+        .from('profiles')
+        .update({ notifications_muted: newVal })
+        .eq('id', session.user.id)
+      setNotificationsMuted(newVal)
+    },
+    [sb, session, notificationsMuted],
+  )
+
   const toggleNotifyAllLive = useCallback(async () => {
     if (!session?.user || !profile || !profile.is_admin) return
     const next = !(profile.notify_all_live || false)
@@ -536,6 +596,10 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     hasReminder,
     toggleAttendance,
     hasAttended,
+    toggleInterest,
+    hasInterest,
+    notificationsMuted,
+    toggleNotificationsMuted,
     refresh,
     updateProfile,
     toggleNotifyAllLive,
@@ -762,6 +826,41 @@ function DemoAuthProvider({ children }: { children: React.ReactNode }) {
     [user],
   )
 
+  const toggleInterest = useCallback<AuthState['toggleInterest']>(
+    async (eventId, _category) => {
+      updateUser((u) => {
+        const current = u.interestedIn || []
+        const has = current.includes(eventId)
+        const nextInterested = has
+          ? current.filter((id) => id !== eventId)
+          : [...current, eventId]
+        // Also toggle reminder
+        const nextReminders = has
+          ? u.remindersFor.filter((id) => id !== eventId)
+          : u.remindersFor.includes(eventId)
+            ? u.remindersFor
+            : [...u.remindersFor, eventId]
+        return { ...u, interestedIn: nextInterested, remindersFor: nextReminders }
+      })
+    },
+    [updateUser],
+  )
+
+  const hasInterest = useCallback(
+    (eventId: string) => !!user?.interestedIn?.includes(eventId),
+    [user],
+  )
+
+  const toggleNotificationsMuted = useCallback<AuthState['toggleNotificationsMuted']>(
+    async () => {
+      updateUser((u) => ({
+        ...u,
+        notificationsMuted: !u.notificationsMuted,
+      }))
+    },
+    [updateUser],
+  )
+
   const toggleNotifyAllLive = useCallback(async () => {
     if (!user?.isAdmin) return
     updateUser((u) => ({ ...u, notifyAllLive: !u.notifyAllLive }))
@@ -783,6 +882,10 @@ function DemoAuthProvider({ children }: { children: React.ReactNode }) {
     hasReminder,
     toggleAttendance,
     hasAttended,
+    toggleInterest,
+    hasInterest,
+    notificationsMuted: user?.notificationsMuted || false,
+    toggleNotificationsMuted,
     refresh: async () => {},
     updateProfile,
     toggleNotifyAllLive,

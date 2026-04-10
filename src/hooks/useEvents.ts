@@ -35,6 +35,8 @@ function rowToEvent(row: EventRow): GliderEvent {
         ? {
             frequency: row.recurrence_freq as RecurrenceFrequency,
             occurrences: row.recurrence_count || 0,
+            daysOfWeek: (row as any).recurrence_days_of_week || undefined,
+            weekOfMonth: (row as any).recurrence_week_of_month || undefined,
           }
         : undefined,
   }
@@ -185,6 +187,8 @@ export function useEvents(currentUserId: string | null, isAdmin = false): UseEve
         image_url: imageUrl || null,
         recurrence_freq: input.recurrence?.frequency || null,
         recurrence_count: input.recurrence?.occurrences || null,
+        recurrence_days_of_week: input.recurrence?.daysOfWeek || null,
+        recurrence_week_of_month: input.recurrence?.weekOfMonth || null,
         created_by: currentUserId,
         status: isAdmin ? 'approved' : 'pending',
       }
@@ -195,12 +199,17 @@ export function useEvents(currentUserId: string | null, isAdmin = false): UseEve
         .select('*')
         .single()
       if (insErr) {
-        // If the 'hosts' column is missing from the DB, retry without it
-        if (insErr.message.includes('hosts') && insErr.message.includes('schema cache')) {
-          const { hosts: _h, ...insertWithoutHosts } = insert
+        // If a column is missing from the DB schema cache, retry without it
+        if (insErr.message.includes('schema cache')) {
+          const {
+            hosts: _h,
+            recurrence_days_of_week: _rdow,
+            recurrence_week_of_month: _rwom,
+            ...stripped
+          } = insert
           const { data: retryData, error: retryErr } = await supabase
             .from('events')
-            .insert(insertWithoutHosts)
+            .insert(stripped)
             .select('*')
             .single()
           if (retryErr || !retryData) {
@@ -287,6 +296,8 @@ export function useEvents(currentUserId: string | null, isAdmin = false): UseEve
       if (updates.recurrence !== undefined) {
         patch.recurrence_freq = updates.recurrence?.frequency || null
         patch.recurrence_count = updates.recurrence?.occurrences || null
+        patch.recurrence_days_of_week = updates.recurrence?.daysOfWeek || null
+        patch.recurrence_week_of_month = updates.recurrence?.weekOfMonth || null
       }
       if (updates.isFeatured !== undefined) patch.is_featured = updates.isFeatured
 
@@ -294,7 +305,24 @@ export function useEvents(currentUserId: string | null, isAdmin = false): UseEve
         .from('events')
         .update(patch)
         .eq('id', id)
-      if (upErr) return { ok: false, error: upErr.message }
+      if (upErr) {
+        // If new recurrence columns are missing from DB, retry without them
+        if (upErr.message.includes('schema cache')) {
+          const {
+            recurrence_days_of_week: _rdow,
+            recurrence_week_of_month: _rwom,
+            ...strippedPatch
+          } = patch
+          const { error: retryErr } = await supabase
+            .from('events')
+            .update(strippedPatch)
+            .eq('id', id)
+          if (retryErr) return { ok: false, error: retryErr.message }
+          await refresh()
+          return { ok: true }
+        }
+        return { ok: false, error: upErr.message }
+      }
 
       await refresh()
       return { ok: true }

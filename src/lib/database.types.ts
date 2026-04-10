@@ -21,6 +21,7 @@ export interface Database {
           email: string
           avatar_url: string | null
           is_admin: boolean
+          notify_all_live: boolean
           notifications_muted: boolean
           created_at: string
         }
@@ -30,6 +31,7 @@ export interface Database {
           email: string
           avatar_url?: string | null
           is_admin?: boolean
+          notify_all_live?: boolean
           notifications_muted?: boolean
           created_at?: string
         }
@@ -53,6 +55,8 @@ export interface Database {
           image_url: string | null
           recurrence_freq: string | null
           recurrence_count: number | null
+          recurrence_days_of_week: number[] | null
+          recurrence_week_of_month: number | null
           created_by: string | null
           is_featured: boolean
           status: string
@@ -75,6 +79,8 @@ export interface Database {
           image_url?: string | null
           recurrence_freq?: string | null
           recurrence_count?: number | null
+          recurrence_days_of_week?: number[] | null
+          recurrence_week_of_month?: number | null
           created_by?: string | null
           is_featured?: boolean
           status?: string

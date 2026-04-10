@@ -98,13 +98,13 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
         className="card p-4 flex flex-col sm:flex-row gap-4 hover:border-glider-olive/30 dark:hover:border-glider-mint/30 transform-gpu hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-[0_8px_30px_rgba(168,224,209,0.12)] transition-all cursor-pointer group"
       >
         <div
-          className={`relative shrink-0 sm:w-44 h-28 rounded-xl overflow-hidden bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center`}
+          className={`relative shrink-0 sm:w-44 ${showImage ? 'aspect-video bg-black/90' : 'h-28 bg-gradient-to-br ' + accentGradients[accent]} rounded-xl overflow-hidden flex items-center justify-center`}
         >
           {showImage ? (
             <img
               src={event.imageUrl}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover"
+              className="w-full h-full object-contain"
               onError={() => setImgFailed(true)}
             />
           ) : (
@@ -188,13 +188,13 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
       className="card overflow-hidden flex flex-col hover:border-glider-olive/30 dark:hover:border-glider-mint/30 transform-gpu hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-[0_8px_30px_rgba(168,224,209,0.12)] transition-all duration-300 group cursor-pointer"
     >
       <div
-        className={`relative h-36 bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center overflow-hidden`}
+        className={`relative ${showImage ? 'aspect-[16/9] bg-black/90' : 'h-36 bg-gradient-to-br ' + accentGradients[accent]} flex items-center justify-center overflow-hidden`}
       >
         {showImage ? (
           <img
             src={event.imageUrl}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
             onError={() => setImgFailed(true)}
           />
         ) : (

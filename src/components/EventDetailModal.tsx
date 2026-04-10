@@ -134,15 +134,15 @@ export default function EventDetailModal({ event, onClose, onRequireAuth, onEdit
       >
         <div className="flex flex-col md:flex-row bg-[#111111] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
           
-          <div className={`relative w-full md:w-[55%] h-64 md:h-[400px] bg-gradient-to-br ${accentGradients[accent]}`}>
+          <div className={`relative w-full md:w-[55%] ${event.imageUrl && !imgFailed ? 'min-h-[16rem] md:min-h-[400px] bg-black' : 'h-64 md:h-[400px] bg-gradient-to-br ' + accentGradients[accent]}`}>
             {event.imageUrl && !imgFailed ? (
-              <img src={event.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-80" onError={() => setImgFailed(true)} />
+              <img src={event.imageUrl} alt="" className="w-full h-full object-contain" onError={() => setImgFailed(true)} />
             ) : (
                 <div className="absolute inset-0 flex items-center justify-center mix-blend-overlay opacity-30">
                   <CatIcon width={200} height={200} />
                 </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent p-8 flex flex-col justify-center">
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent p-8 flex flex-col justify-center">
               <span className={`inline-flex items-center gap-2 self-start rounded-full px-3 py-1 text-[11px] font-bold tracking-wider uppercase ${status === 'live' ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' : status === 'past' ? 'bg-white/20 text-white' : 'bg-glider-mint text-black'}`}>
                 {status === 'live' && <LiveDotIcon width={8} height={8} className="animate-pulse" />}
                 {statusLabel(status)}

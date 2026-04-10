@@ -380,14 +380,20 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
       if (!session?.user) return
       const cur = socials[platform]
       if (!cur) return
-      await sb
-        .from('social_connections')
-        .update({ notifications: !cur.notifications })
+      const next = !cur.notifications
+      // Optimistic UI update
+      setSocials((prev) => ({
+        ...prev,
+        [platform]: { ...cur, notifications: next },
+      }))
+      // Persist in background
+      sb.from('social_connections')
+        .update({ notifications: next })
         .eq('user_id', session.user.id)
         .eq('platform', platform)
-      await refresh()
+        .then()
     },
-    [sb, session, socials, refresh],
+    [sb, session, socials],
   )
 
   const toggleReminder = useCallback<AuthState['toggleReminder']>(
@@ -552,12 +558,14 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
   const toggleNotifyAllLive = useCallback(async () => {
     if (!session?.user || !profile || !profile.is_admin) return
     const next = !(profile.notify_all_live || false)
-    await sb
-      .from('profiles')
+    // Optimistic UI update
+    setProfile((prev) => prev ? { ...prev, notify_all_live: next } : prev)
+    // Persist in background
+    sb.from('profiles')
       .update({ notify_all_live: next })
       .eq('id', session.user.id)
-    await refresh()
-  }, [sb, session, profile, refresh])
+      .then()
+  }, [sb, session, profile])
 
   const value: AuthState = {
     user,

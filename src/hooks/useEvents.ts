@@ -61,6 +61,7 @@ interface UseEventsResult {
   updateEvent: (
     id: string,
     updates: Partial<Omit<GliderEvent, 'id'>>,
+    imageFile?: File | null,
   ) => Promise<{ ok: true } | { ok: false; error: string }>
   deleteEvent: (id: string) => Promise<{ ok: true } | { ok: false; error: string }>
   toggleFeatured: (id: string, featured: boolean) => Promise<{ ok: true } | { ok: false; error: string }>
@@ -212,9 +213,18 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
   )
 
   const updateEvent = useCallback<UseEventsResult['updateEvent']>(
-    async (id, updates) => {
+    async (id, updates, imageFile) => {
       // ----- demo mode --------------------------------------------------
       if (!isSupabaseConfigured || !supabase) {
+        // For demo mode, if a new image file was provided, read it as base64
+        if (imageFile) {
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(reader.result as string)
+            reader.readAsDataURL(imageFile)
+          })
+          updates = { ...updates, imageUrl: dataUrl }
+        }
         const local = loadLocalUserEvents()
         const idx = local.findIndex((e) => e.id === id)
         if (idx >= 0) {
@@ -230,6 +240,26 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
       }
 
       // ----- supabase mode ---------------------------------------------
+      // Handle image upload if a new file was provided
+      if (imageFile && currentUserId) {
+        const path = `${currentUserId}/${Date.now()}-${imageFile.name}`
+        const { error: storageErr } = await supabase.storage
+          .from(EVENT_BUCKET)
+          .upload(path, imageFile, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: imageFile.type,
+          })
+        if (storageErr) {
+          console.warn('Image upload failed during edit:', storageErr.message)
+        } else {
+          const { data: publicUrlData } = supabase.storage
+            .from(EVENT_BUCKET)
+            .getPublicUrl(path)
+          updates = { ...updates, imageUrl: publicUrlData.publicUrl }
+        }
+      }
+
       const patch: Database['public']['Tables']['events']['Update'] = {}
       if (updates.title !== undefined) patch.title = updates.title
       if (updates.description !== undefined) patch.description = updates.description
@@ -258,7 +288,7 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
       await refresh()
       return { ok: true }
     },
-    [refresh],
+    [refresh, currentUserId],
   )
 
   const deleteEvent = useCallback<UseEventsResult['deleteEvent']>(

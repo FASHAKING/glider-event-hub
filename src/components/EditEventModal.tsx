@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from 'react'
 import type { GliderEvent, RecurrenceFrequency } from '../types'
 import { PRESET_CATEGORIES } from '../types'
 
+const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024 // 1.5 MB
+
 interface Props {
   event: GliderEvent | null
   onClose: () => void
   onSave: (
     id: string,
     updates: Partial<Omit<GliderEvent, 'id'>>,
+    imageFile?: File | null,
   ) => Promise<{ ok: true } | { ok: false; error: string }>
 }
 
@@ -49,9 +52,15 @@ export default function EditEventModal({ event, onClose, onSave }: Props) {
   const [platform, setPlatform] = useState<string>('')
   const [recurrence, setRecurrence] = useState<RecurrenceFrequency>('none')
   const [occurrences, setOccurrences] = useState<number>(4)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [existingImage, setExistingImage] = useState<string | null>(null)
+  const [removeImage, setRemoveImage] = useState(false)
+  const [imageError, setImageError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const formRef = useRef<HTMLFormElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Pre-populate when event changes
   useEffect(() => {
@@ -67,10 +76,33 @@ export default function EditEventModal({ event, onClose, onSave }: Props) {
     setPlatform(event.location || '')
     setRecurrence(event.recurrence?.frequency || 'none')
     setOccurrences(event.recurrence?.occurrences || 4)
+    setExistingImage(event.imageUrl || null)
+    setImageFile(null)
+    setImagePreview(null)
+    setRemoveImage(false)
+    setImageError(null)
     setSaveError(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }, [event])
 
   if (!event) return null
+
+  const handleImage = (file: File | undefined) => {
+    setImageError(null)
+    if (!file) return
+    if (file.size > MAX_IMAGE_BYTES) {
+      setImageError('Image must be under 1.5 MB.')
+      return
+    }
+    setImageFile(file)
+    setRemoveImage(false)
+    const reader = new FileReader()
+    reader.onload = () => {
+      setImagePreview(typeof reader.result === 'string' ? reader.result : null)
+    }
+    reader.onerror = () => setImageError('Could not read that file.')
+    reader.readAsDataURL(file)
+  }
 
   const handleSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault()
@@ -108,8 +140,18 @@ export default function EditEventModal({ event, onClose, onSave }: Props) {
           : { frequency: recurrence, occurrences: Math.max(1, occurrences) },
     }
 
+    // Handle image changes
+    if (removeImage && !imageFile) {
+      // Admin wants to remove the image entirely
+      updates.imageUrl = undefined
+    } else if (imagePreview && !imageFile) {
+      // Preview is a base64 from a new file (demo mode fallback)
+      updates.imageUrl = imagePreview
+    }
+    // If imageFile is set, the hook will handle the upload
+
     try {
-      const result = await onSave(event.id, updates)
+      const result = await onSave(event.id, updates, imageFile)
       if (!result.ok) {
         setSaveError(result.error)
         setSaving(false)
@@ -279,6 +321,67 @@ export default function EditEventModal({ event, onClose, onSave }: Props) {
               </Field>
             )}
           </div>
+
+          {/* Image upload / edit / remove */}
+          <Field label="Event Image">
+            <div className="space-y-2">
+              {/* Show current or new preview */}
+              {(imagePreview || (existingImage && !removeImage)) && (
+                <div className="relative h-36 rounded-xl overflow-hidden border border-glider-border dark:border-glider-darkBorder">
+                  <img
+                    src={imagePreview || existingImage!}
+                    alt="Event"
+                    className="w-full h-full object-cover"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImageFile(null)
+                      setImagePreview(null)
+                      setRemoveImage(true)
+                      if (fileInputRef.current) fileInputRef.current.value = ''
+                    }}
+                    className="absolute top-2 right-2 bg-red-600/80 hover:bg-red-600 text-white text-xs px-2.5 py-1 rounded-md font-semibold transition-colors"
+                  >
+                    Remove
+                  </button>
+                  {imagePreview && existingImage && (
+                    <span className="absolute top-2 left-2 bg-glider-mint/90 text-black text-[10px] px-2 py-0.5 rounded-md font-bold">
+                      New
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Show "removed" state */}
+              {removeImage && !imagePreview && (
+                <div className="flex items-center gap-2 text-sm text-glider-gray dark:text-glider-darkMuted bg-glider-light dark:bg-glider-darkPanel2 rounded-xl px-4 py-3 border border-glider-border dark:border-glider-darkBorder">
+                  <span>Image will be removed.</span>
+                  {existingImage && (
+                    <button
+                      type="button"
+                      onClick={() => setRemoveImage(false)}
+                      className="text-glider-olive dark:text-glider-mint font-semibold hover:underline"
+                    >
+                      Undo
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* File picker */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={(e) => handleImage(e.target.files?.[0])}
+                className="input file:mr-3 file:rounded-lg file:border-0 file:bg-glider-mint/40 file:dark:bg-glider-mint/15 file:px-3 file:py-1.5 file:text-glider-olive file:dark:text-glider-mint file:font-semibold"
+              />
+              {imageError && (
+                <p className="text-xs text-red-600 dark:text-red-400">{imageError}</p>
+              )}
+            </div>
+          </Field>
         </div>
 
         {saveError && (

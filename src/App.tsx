@@ -181,8 +181,8 @@ function AppInner() {
       <EditEventModal
         event={editingEvent}
         onClose={() => setEditingEvent(null)}
-        onSave={async (id, updates) => {
-          const result = await updateEvent(id, updates)
+        onSave={async (id, updates, imageFile) => {
+          const result = await updateEvent(id, updates, imageFile ?? undefined)
           if (result.ok) {
             setEditingEvent(null)
           }

@@ -23,16 +23,13 @@ const platforms: {
   hint: string
   icon: JSX.Element
   color: string
-  /** Always-on channel that uses the account email; no Connect step. */
-  alwaysOn?: boolean
 }[] = [
   {
     key: 'email',
     name: 'Email',
-    placeholder: '',
-    hint: 'Get notified at the email you signed up with whenever a tracked event goes live.',
+    placeholder: 'you@example.com',
+    hint: 'Get notified by email whenever a tracked event goes live.',
     color: 'bg-glider-olive text-white dark:bg-glider-mint dark:text-glider-black',
-    alwaysOn: true,
     icon: (
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="3" y="5" width="18" height="14" rx="2" />
@@ -173,7 +170,7 @@ export default function ProfileModal({
       return
     }
 
-    const handle = draftHandles[platform] || ''
+    const handle = draftHandles[platform] || (platform === 'email' ? user.email : '')
     const result = await connectSocial(platform, handle)
     if (result.ok) {
       setDraft(platform, '')
@@ -417,17 +414,6 @@ export default function ProfileModal({
 
               {platforms.map((p) => {
                 const conn = user.socials[p.key]
-                // Email is always rendered as connected, falling back to
-                // the account email while the DB row is being created.
-                const effectiveConn =
-                  p.alwaysOn && !conn
-                    ? {
-                        handle: user.email,
-                        connectedAt: user.createdAt,
-                        notifications: true,
-                        externalId: undefined,
-                      }
-                    : conn
                 return (
                   <div
                     key={p.key}
@@ -442,24 +428,15 @@ export default function ProfileModal({
                       <div className="font-semibold text-glider-black dark:text-glider-darkText text-sm">
                         {p.name}
                       </div>
-                      {effectiveConn ? (
+                      {conn ? (
                         <div className="text-xs text-glider-gray dark:text-glider-darkMuted truncate">
-                          {p.alwaysOn ? (
-                            <>
-                              {effectiveConn.notifications ? 'Sending to' : 'Notifications off ·'}{' '}
-                              <span className={`font-mono ${effectiveConn.notifications ? 'text-glider-olive dark:text-glider-mint' : 'text-glider-gray dark:text-glider-darkMuted'}`}>
-                                {effectiveConn.handle}
-                              </span>
-                            </>
-                          ) : (
-                            <>
-                              Connected as{' '}
-                              <span className="font-mono text-glider-olive dark:text-glider-mint">
-                                @{effectiveConn.handle}
-                              </span>
-                            </>
-                          )}
-                          {effectiveConn.externalId && (
+                          <>
+                            Connected as{' '}
+                            <span className="font-mono text-glider-olive dark:text-glider-mint">
+                              {p.key === 'email' ? '' : '@'}{conn.handle}
+                            </span>
+                          </>
+                          {conn.externalId && (
                             <span className="ml-1 text-[10px] text-glider-mint">
                               · chat linked
                             </span>
@@ -503,25 +480,23 @@ export default function ProfileModal({
                         )}
                     </div>
 
-                    {effectiveConn ? (
+                    {conn ? (
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => toggleSocialNotifications(p.key)}
-                          className={`relative w-11 h-6 rounded-full transition-colors ${effectiveConn.notifications ? 'bg-glider-olive dark:bg-glider-mint' : 'bg-gray-300 dark:bg-gray-600'}`}
-                          title={effectiveConn.notifications ? 'Notifications on' : 'Notifications off'}
+                          className={`relative w-11 h-6 rounded-full transition-colors ${conn.notifications ? 'bg-glider-olive dark:bg-glider-mint' : 'bg-gray-300 dark:bg-gray-600'}`}
+                          title={conn.notifications ? 'Notifications on' : 'Notifications off'}
                         >
-                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${effectiveConn.notifications ? 'left-[22px]' : 'left-0.5'}`} />
+                          <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${conn.notifications ? 'left-[22px]' : 'left-0.5'}`} />
                         </button>
-                        {!p.alwaysOn && (
-                          <button
-                            type="button"
-                            onClick={() => disconnectSocial(p.key)}
-                            className="btn-ghost text-xs py-1.5 px-3"
-                          >
-                            Disconnect
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => disconnectSocial(p.key)}
+                          className="btn-ghost text-xs py-1.5 px-3"
+                        >
+                          Disconnect
+                        </button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2">

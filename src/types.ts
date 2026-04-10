@@ -55,6 +55,8 @@ export interface GliderEvent {
   recurrence?: EventRecurrence
   /** Whether this event is pinned/featured at the top */
   isFeatured?: boolean
+  /** Approval status: pending submissions await admin review */
+  status?: 'pending' | 'approved' | 'rejected'
 }
 
 export type EventStatus = 'live' | 'upcoming' | 'past'
@@ -198,4 +200,8 @@ export interface UserAccount {
   earnedBadges: BadgeId[]
   /** whether this user has admin privileges */
   isAdmin?: boolean
+  /** whether all notifications are globally muted */
+  notificationsMuted?: boolean
+  /** event IDs the user has expressed interest in */
+  interestedIn?: string[]
 }

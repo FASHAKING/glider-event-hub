@@ -4,9 +4,9 @@ import { getEventStatus } from '../types'
 import EventCard from './EventCard'
 import { SearchIcon, GridIcon, ListIcon, ChevronDownIcon } from './Icons'
 
-type Tab = 'all' | EventStatus
+type Tab = 'all' | EventStatus | 'pending'
 
-const tabs: { key: Tab; label: string }[] = [
+const baseTabs: { key: Tab; label: string }[] = [
   { key: 'all', label: 'All' },
   { key: 'upcoming', label: 'Upcoming' },
   { key: 'live', label: 'Now' },
@@ -25,29 +25,52 @@ const allCategories: EventCategory[] = [
 interface EventListProps {
   events: GliderEvent[]
   onOpenEvent: (event: GliderEvent) => void
+  isAdmin?: boolean
 }
 
-export default function EventList({ events, onOpenEvent }: EventListProps) {
+export default function EventList({ events, onOpenEvent, isAdmin }: EventListProps) {
   const [tab, setTab] = useState<Tab>('all')
   const [query, setQuery] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [category, setCategory] = useState<EventCategory | 'All'>('All')
   const [catOpen, setCatOpen] = useState(false)
 
+  const tabs = useMemo(() => {
+    if (isAdmin) return [...baseTabs, { key: 'pending' as Tab, label: 'Pending' }]
+    return baseTabs
+  }, [isAdmin])
+
   const withStatus = useMemo(
     () => events.map((e) => ({ event: e, status: getEventStatus(e) })),
     [events],
   )
 
+  const pendingCount = useMemo(
+    () => events.filter((e) => e.status === 'pending').length,
+    [events],
+  )
+
   const counts = useMemo(() => {
-    const c: Record<Tab, number> = { all: events.length, live: 0, upcoming: 0, past: 0 }
-    for (const { status } of withStatus) c[status]++
+    // For non-admins, count only approved events
+    const approved = withStatus.filter((x) => x.event.status !== 'pending' && x.event.status !== 'rejected')
+    const c: Record<Tab, number> = { all: approved.length, live: 0, upcoming: 0, past: 0, pending: pendingCount }
+    for (const { status, event } of withStatus) {
+      if (event.status === 'pending' || event.status === 'rejected') continue
+      c[status]++
+    }
     return c
-  }, [withStatus, events.length])
+  }, [withStatus, pendingCount])
 
   const visible = useMemo(() => {
     let list = withStatus
-    if (tab !== 'all') list = list.filter((x) => x.status === tab)
+    // "Pending" tab shows only pending events
+    if (tab === 'pending') {
+      list = list.filter((x) => x.event.status === 'pending')
+    } else {
+      // Non-pending tabs exclude pending/rejected events
+      list = list.filter((x) => x.event.status !== 'pending' && x.event.status !== 'rejected')
+      if (tab !== 'all') list = list.filter((x) => x.status === tab)
+    }
     if (category !== 'All') list = list.filter((x) => x.event.category === category)
     if (query.trim()) {
       const q = query.toLowerCase()

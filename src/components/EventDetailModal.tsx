@@ -24,6 +24,8 @@ interface Props {
   onEditEvent?: (event: GliderEvent) => void
   onDeleteEvent?: (id: string) => void
   onToggleFeatured?: (id: string, featured: boolean) => void
+  onApproveEvent?: (id: string) => void
+  onRejectEvent?: (id: string) => void
 }
 
 const accentGradients: Record<EventAccent, string> = {
@@ -63,8 +65,8 @@ function formatCommentTime(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-export default function EventDetailModal({ event, onClose, onRequireAuth, onEditEvent, onDeleteEvent, onToggleFeatured }: Props) {
-  const { user, toggleAttendance, hasAttended } = useAuth()
+export default function EventDetailModal({ event, onClose, onRequireAuth, onEditEvent, onDeleteEvent, onToggleFeatured, onApproveEvent, onRejectEvent }: Props) {
+  const { user, toggleAttendance, hasAttended, toggleInterest, hasInterest } = useAuth()
   const [tick, setTick] = useState(0)
   const [imgFailed, setImgFailed] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -116,6 +118,8 @@ export default function EventDetailModal({ event, onClose, onRequireAuth, onEdit
   const CatIcon = getCategoryIcon(event.category)
   const accent = event.accent || 'mint'
   const attended = hasAttended(event.id)
+  const interested = hasInterest(event.id)
+  const isPending = event.status === 'pending'
 
   const allHosts = [event.host, ...(event.hosts || [])].filter(Boolean)
 
@@ -132,6 +136,13 @@ export default function EventDetailModal({ event, onClose, onRequireAuth, onEdit
         onClick={(e) => e.stopPropagation()}
         className="relative w-full max-w-[1100px] mt-8 mb-auto flex flex-col gap-6 animate-in slide-in-from-bottom-8 fade-in duration-300"
       >
+        {isPending && (
+          <div className="bg-amber-500/20 border border-amber-500/30 rounded-2xl px-5 py-3 flex items-center gap-3">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400 shrink-0"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span className="text-sm font-semibold text-amber-300">This event is pending admin approval and is not yet visible to the public.</span>
+          </div>
+        )}
+
         <div className="flex flex-col md:flex-row bg-[#111111] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
           
           <div className={`relative w-full md:w-[55%] ${event.imageUrl && !imgFailed ? 'min-h-[16rem] md:min-h-[400px] bg-black' : 'h-64 md:h-[400px] bg-gradient-to-br ' + accentGradients[accent]}`}>
@@ -207,6 +218,26 @@ export default function EventDetailModal({ event, onClose, onRequireAuth, onEdit
               <svg width="13" height="13" viewBox="0 0 24 24" fill={event.isFeatured ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
               {event.isFeatured ? 'Unpin' : 'Pin'}
             </button>
+            {isPending && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onApproveEvent?.(event.id)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/30 text-xs font-semibold transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRejectEvent?.(event.id)}
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 hover:bg-red-500/30 text-xs font-semibold transition-colors"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  Reject
+                </button>
+              </>
+            )}
             {!confirmDelete ? (
               <button
                 type="button"
@@ -306,6 +337,28 @@ export default function EventDetailModal({ event, onClose, onRequireAuth, onEdit
                     <ExternalIcon width={16} height={16} />
                     {status === 'live' ? 'Join Live' : status === 'past' ? 'View Recap' : 'Join Event'}
                   </a>
+
+                  {/* Interested — for upcoming events */}
+                  {status === 'upcoming' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!user) {
+                          onRequireAuth()
+                          return
+                        }
+                        toggleInterest(event.id, event.category)
+                      }}
+                      className={`flex-1 sm:flex-none px-6 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all duration-300 ${
+                        interested
+                          ? 'bg-pink-500/20 text-pink-400 border border-pink-500/30 shadow-[0_0_15px_rgba(236,72,153,0.3)]'
+                          : 'bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                      }`}
+                    >
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill={interested ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+                      {interested ? 'Interested' : 'Interested?'}
+                    </button>
+                  )}
 
                   {/* Mark as Attended — only for past or live events */}
                   {(status === 'past' || status === 'live') && (

@@ -21,6 +21,7 @@ export interface Database {
           email: string
           avatar_url: string | null
           is_admin: boolean
+          notifications_muted: boolean
           created_at: string
         }
         Insert: {
@@ -29,6 +30,7 @@ export interface Database {
           email: string
           avatar_url?: string | null
           is_admin?: boolean
+          notifications_muted?: boolean
           created_at?: string
         }
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>
@@ -53,6 +55,7 @@ export interface Database {
           recurrence_count: number | null
           created_by: string | null
           is_featured: boolean
+          status: string
           created_at: string
           updated_at: string
         }
@@ -74,6 +77,7 @@ export interface Database {
           recurrence_count?: number | null
           created_by?: string | null
           is_featured?: boolean
+          status?: string
           created_at?: string
           updated_at?: string
         }
@@ -197,6 +201,24 @@ export interface Database {
         }
         Update: Partial<
           Database['public']['Tables']['comments']['Insert']
+        >
+        Relationships: []
+      }
+      interests: {
+        Row: {
+          user_id: string
+          event_id: string
+          category: string
+          created_at: string
+        }
+        Insert: {
+          user_id: string
+          event_id: string
+          category: string
+          created_at?: string
+        }
+        Update: Partial<
+          Database['public']['Tables']['interests']['Insert']
         >
         Relationships: []
       }

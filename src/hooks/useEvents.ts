@@ -29,6 +29,7 @@ function rowToEvent(row: EventRow): GliderEvent {
     accent: (row.accent as EventAccent) || 'mint',
     imageUrl: row.image_url || undefined,
     isFeatured: (row as any).is_featured || false,
+    status: (row.status as 'pending' | 'approved' | 'rejected') || 'approved',
     recurrence:
       row.recurrence_freq && row.recurrence_freq !== 'none'
         ? {
@@ -70,10 +71,12 @@ interface UseEventsResult {
   ) => Promise<{ ok: true } | { ok: false; error: string }>
   deleteEvent: (id: string) => Promise<{ ok: true } | { ok: false; error: string }>
   toggleFeatured: (id: string, featured: boolean) => Promise<{ ok: true } | { ok: false; error: string }>
+  approveEvent: (id: string) => Promise<{ ok: true } | { ok: false; error: string }>
+  rejectEvent: (id: string) => Promise<{ ok: true } | { ok: false; error: string }>
   refresh: () => Promise<void>
 }
 
-export function useEvents(currentUserId: string | null): UseEventsResult {
+export function useEvents(currentUserId: string | null, isAdmin = false): UseEventsResult {
   const [events, setEvents] = useState<GliderEvent[]>(() =>
     isSupabaseConfigured ? [] : [...sampleEvents, ...loadLocalUserEvents()],
   )
@@ -132,6 +135,7 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
         const newEvent: GliderEvent = {
           ...input,
           id: `user-${Date.now()}`,
+          status: isAdmin ? 'approved' : 'pending',
         }
         const next = [...loadLocalUserEvents(), newEvent]
         saveLocalUserEvents(next)
@@ -182,6 +186,7 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
         recurrence_freq: input.recurrence?.frequency || null,
         recurrence_count: input.recurrence?.occurrences || null,
         created_by: currentUserId,
+        status: isAdmin ? 'approved' : 'pending',
       }
 
       const { data, error: insErr } = await supabase
@@ -214,7 +219,7 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
       setEvents((prev) => [...prev, created])
       return { ok: true, event: created }
     },
-    [currentUserId],
+    [currentUserId, isAdmin],
   )
 
   const updateEvent = useCallback<UseEventsResult['updateEvent']>(
@@ -347,5 +352,63 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
     [],
   )
 
-  return { events, loading, error, submitEvent, updateEvent, deleteEvent, toggleFeatured, refresh }
+  const approveEvent = useCallback<UseEventsResult['approveEvent']>(
+    async (rawId) => {
+      const id = baseEventId(rawId)
+      if (!isSupabaseConfigured || !supabase) {
+        const local = loadLocalUserEvents()
+        const idx = local.findIndex((e) => e.id === id)
+        if (idx >= 0) {
+          local[idx] = { ...local[idx], status: 'approved' }
+          saveLocalUserEvents(local)
+          setEvents([...sampleEvents, ...local])
+        } else {
+          setEvents((prev) =>
+            prev.map((e) => (e.id === id ? { ...e, status: 'approved' } : e)),
+          )
+        }
+        return { ok: true }
+      }
+      const { error: upErr } = await supabase
+        .from('events')
+        .update({ status: 'approved' })
+        .eq('id', id)
+      if (upErr) return { ok: false, error: upErr.message }
+      setEvents((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, status: 'approved' } : e)),
+      )
+      return { ok: true }
+    },
+    [],
+  )
+
+  const rejectEvent = useCallback<UseEventsResult['rejectEvent']>(
+    async (rawId) => {
+      const id = baseEventId(rawId)
+      if (!isSupabaseConfigured || !supabase) {
+        const local = loadLocalUserEvents()
+        const idx = local.findIndex((e) => e.id === id)
+        if (idx >= 0) {
+          local[idx] = { ...local[idx], status: 'rejected' }
+          saveLocalUserEvents(local)
+          setEvents([...sampleEvents, ...local])
+        } else {
+          setEvents((prev) =>
+            prev.map((e) => (e.id === id ? { ...e, status: 'rejected' } : e)),
+          )
+        }
+        return { ok: true }
+      }
+      const { error: upErr } = await supabase
+        .from('events')
+        .update({ status: 'rejected' })
+        .eq('id', id)
+      if (upErr) return { ok: false, error: upErr.message }
+      setEvents((prev) => prev.filter((e) => e.id !== id))
+      return { ok: true }
+    },
+    [],
+  )
+
+  return { events, loading, error, submitEvent, updateEvent, deleteEvent, toggleFeatured, approveEvent, rejectEvent, refresh }
 }

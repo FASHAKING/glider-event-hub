@@ -34,8 +34,8 @@ function rowToEvent(row: EventRow): GliderEvent {
         ? {
             frequency: row.recurrence_freq as RecurrenceFrequency,
             occurrences: row.recurrence_count || 0,
-            daysOfWeek: row.recurrence_days_of_week || undefined,
-            weekOfMonth: row.recurrence_week_of_month || undefined,
+            daysOfWeek: (row as any).recurrence_days_of_week || undefined,
+            weekOfMonth: (row as any).recurrence_week_of_month || undefined,
           }
         : undefined,
   }
@@ -194,12 +194,17 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
         .select('*')
         .single()
       if (insErr) {
-        // If the 'hosts' column is missing from the DB, retry without it
-        if (insErr.message.includes('hosts') && insErr.message.includes('schema cache')) {
-          const { hosts: _h, ...insertWithoutHosts } = insert
+        // If a column is missing from the DB schema cache, retry without it
+        if (insErr.message.includes('schema cache')) {
+          const {
+            hosts: _h,
+            recurrence_days_of_week: _rdow,
+            recurrence_week_of_month: _rwom,
+            ...stripped
+          } = insert
           const { data: retryData, error: retryErr } = await supabase
             .from('events')
-            .insert(insertWithoutHosts)
+            .insert(stripped)
             .select('*')
             .single()
           if (retryErr || !retryData) {
@@ -295,7 +300,24 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
         .from('events')
         .update(patch)
         .eq('id', id)
-      if (upErr) return { ok: false, error: upErr.message }
+      if (upErr) {
+        // If new recurrence columns are missing from DB, retry without them
+        if (upErr.message.includes('schema cache')) {
+          const {
+            recurrence_days_of_week: _rdow,
+            recurrence_week_of_month: _rwom,
+            ...strippedPatch
+          } = patch
+          const { error: retryErr } = await supabase
+            .from('events')
+            .update(strippedPatch)
+            .eq('id', id)
+          if (retryErr) return { ok: false, error: retryErr.message }
+          await refresh()
+          return { ok: true }
+        }
+        return { ok: false, error: upErr.message }
+      }
 
       await refresh()
       return { ok: true }

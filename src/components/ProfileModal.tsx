@@ -355,22 +355,24 @@ export default function ProfileModal({
                 Discord when events you're tracking go live or are updated.
               </p>
 
-              <label className="flex items-center gap-3 bg-glider-light dark:bg-glider-darkPanel2 border border-glider-border dark:border-glider-darkBorder rounded-xl p-4 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={user.notifyAllLive || false}
-                  onChange={() => toggleNotifyAllLive()}
-                  className="w-4 h-4 accent-glider-olive"
-                />
-                <div>
-                  <div className="font-semibold text-glider-black dark:text-glider-darkText text-sm">
-                    Notify me when any event goes live
+              {user.isAdmin && (
+                <label className="flex items-center gap-3 bg-glider-light dark:bg-glider-darkPanel2 border border-glider-border dark:border-glider-darkBorder rounded-xl p-4 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={user.notifyAllLive || false}
+                    onChange={() => toggleNotifyAllLive()}
+                    className="w-4 h-4 accent-glider-olive"
+                  />
+                  <div>
+                    <div className="font-semibold text-glider-black dark:text-glider-darkText text-sm">
+                      Notify me when any event goes live
+                    </div>
+                    <div className="text-xs text-glider-gray dark:text-glider-darkMuted">
+                      Get notified for all live events, not just ones you set reminders on
+                    </div>
                   </div>
-                  <div className="text-xs text-glider-gray dark:text-glider-darkMuted">
-                    Get notified for all live events, not just ones you set reminders on
-                  </div>
-                </div>
-              </label>
+                </label>
+              )}
 
               {platforms.map((p) => {
                 const conn = user.socials[p.key]

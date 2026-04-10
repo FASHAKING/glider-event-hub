@@ -511,7 +511,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
   )
 
   const toggleNotifyAllLive = useCallback(async () => {
-    if (!session?.user || !profile) return
+    if (!session?.user || !profile || !profile.is_admin) return
     const next = !(profile.notify_all_live || false)
     await sb
       .from('profiles')
@@ -763,8 +763,9 @@ function DemoAuthProvider({ children }: { children: React.ReactNode }) {
   )
 
   const toggleNotifyAllLive = useCallback(async () => {
+    if (!user?.isAdmin) return
     updateUser((u) => ({ ...u, notifyAllLive: !u.notifyAllLive }))
-  }, [updateUser])
+  }, [user, updateUser])
 
   const value: AuthState = {
     user,

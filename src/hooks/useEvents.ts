@@ -34,6 +34,8 @@ function rowToEvent(row: EventRow): GliderEvent {
         ? {
             frequency: row.recurrence_freq as RecurrenceFrequency,
             occurrences: row.recurrence_count || 0,
+            daysOfWeek: row.recurrence_days_of_week || undefined,
+            weekOfMonth: row.recurrence_week_of_month || undefined,
           }
         : undefined,
   }
@@ -181,6 +183,8 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
         image_url: imageUrl || null,
         recurrence_freq: input.recurrence?.frequency || null,
         recurrence_count: input.recurrence?.occurrences || null,
+        recurrence_days_of_week: input.recurrence?.daysOfWeek || null,
+        recurrence_week_of_month: input.recurrence?.weekOfMonth || null,
         created_by: currentUserId,
       }
 
@@ -282,6 +286,8 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
       if (updates.recurrence !== undefined) {
         patch.recurrence_freq = updates.recurrence?.frequency || null
         patch.recurrence_count = updates.recurrence?.occurrences || null
+        patch.recurrence_days_of_week = updates.recurrence?.daysOfWeek || null
+        patch.recurrence_week_of_month = updates.recurrence?.weekOfMonth || null
       }
       if (updates.isFeatured !== undefined) patch.is_featured = updates.isFeatured
 

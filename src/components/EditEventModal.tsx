@@ -33,7 +33,18 @@ const recurrences: { value: RecurrenceFrequency; label: string }[] = [
   { value: 'weekly', label: 'Weekly' },
   { value: 'biweekly', label: 'Every 2 weeks' },
   { value: 'monthly', label: 'Monthly' },
+  { value: 'monthly_nth_day', label: 'Monthly (specific day)' },
 ]
+
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const
+const DAY_NAMES_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const
+const ORDINAL_OPTIONS = [
+  { value: 1, label: '1st' },
+  { value: 2, label: '2nd' },
+  { value: 3, label: '3rd' },
+  { value: 4, label: '4th' },
+  { value: 5, label: 'Last' },
+] as const
 
 function toLocalDatetime(iso: string) {
   const d = new Date(iso)
@@ -52,6 +63,8 @@ export default function EditEventModal({ event, onClose, onSave }: Props) {
   const [platform, setPlatform] = useState<string>('')
   const [recurrence, setRecurrence] = useState<RecurrenceFrequency>('none')
   const [occurrences, setOccurrences] = useState<number>(4)
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([])
+  const [weekOfMonth, setWeekOfMonth] = useState<number>(1)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [existingImage, setExistingImage] = useState<string | null>(null)
@@ -76,6 +89,8 @@ export default function EditEventModal({ event, onClose, onSave }: Props) {
     setPlatform(event.location || '')
     setRecurrence(event.recurrence?.frequency || 'none')
     setOccurrences(event.recurrence?.occurrences || 4)
+    setDaysOfWeek(event.recurrence?.daysOfWeek || [])
+    setWeekOfMonth(event.recurrence?.weekOfMonth || 1)
     setExistingImage(event.imageUrl || null)
     setImageFile(null)
     setImagePreview(null)
@@ -137,7 +152,16 @@ export default function EditEventModal({ event, onClose, onSave }: Props) {
       recurrence:
         recurrence === 'none'
           ? undefined
-          : { frequency: recurrence, occurrences: Math.max(1, occurrences) },
+          : {
+              frequency: recurrence,
+              occurrences: Math.max(1, occurrences),
+              ...(recurrence === 'weekly' && daysOfWeek.length > 0
+                ? { daysOfWeek }
+                : {}),
+              ...(recurrence === 'monthly_nth_day'
+                ? { daysOfWeek: daysOfWeek.length > 0 ? daysOfWeek : [new Date(startsAt).getDay()], weekOfMonth }
+                : {}),
+            },
     }
 
     // Handle image changes
@@ -296,9 +320,23 @@ export default function EditEventModal({ event, onClose, onSave }: Props) {
             <Field label="Recurrence">
               <select
                 value={recurrence}
-                onChange={(e) =>
-                  setRecurrence(e.target.value as RecurrenceFrequency)
-                }
+                onChange={(e) => {
+                  const val = e.target.value as RecurrenceFrequency
+                  setRecurrence(val)
+                  // Auto-populate day-of-week from start date
+                  if (startsAt) {
+                    const startDow = new Date(startsAt).getDay()
+                    if (val === 'weekly' && daysOfWeek.length === 0) {
+                      setDaysOfWeek([startDow])
+                    }
+                    if (val === 'monthly_nth_day') {
+                      if (daysOfWeek.length === 0) setDaysOfWeek([startDow])
+                      const d = new Date(startsAt)
+                      const weekNum = Math.min(Math.ceil(d.getDate() / 7), 5)
+                      setWeekOfMonth(weekNum)
+                    }
+                  }
+                }}
                 className="input"
               >
                 {recurrences.map((r) => (
@@ -321,6 +359,67 @@ export default function EditEventModal({ event, onClose, onSave }: Props) {
               </Field>
             )}
           </div>
+
+          {/* Weekly: day-of-week toggles */}
+          {recurrence === 'weekly' && (
+            <Field label="Repeat on">
+              <div className="flex gap-1.5 flex-wrap">
+                {DAY_LABELS.map((label, idx) => {
+                  const active = daysOfWeek.includes(idx)
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() =>
+                        setDaysOfWeek((prev) =>
+                          active ? prev.filter((d) => d !== idx) : [...prev, idx],
+                        )
+                      }
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+                        active
+                          ? 'bg-glider-olive text-white border-glider-olive dark:bg-glider-mint dark:text-glider-black dark:border-glider-mint'
+                          : 'bg-white/50 text-glider-gray border-glider-border hover:border-glider-olive dark:bg-black/30 dark:text-glider-darkMuted dark:border-white/10 dark:hover:border-glider-mint'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+            </Field>
+          )}
+
+          {/* Monthly nth day: day-of-week + ordinal selects */}
+          {recurrence === 'monthly_nth_day' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Day of week">
+                <select
+                  value={daysOfWeek[0] ?? 0}
+                  onChange={(e) => setDaysOfWeek([Number(e.target.value)])}
+                  className="input"
+                >
+                  {DAY_NAMES_LONG.map((name, idx) => (
+                    <option key={idx} value={idx}>
+                      {name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Which one">
+                <select
+                  value={weekOfMonth}
+                  onChange={(e) => setWeekOfMonth(Number(e.target.value))}
+                  className="input"
+                >
+                  {ORDINAL_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          )}
 
           {/* Image upload / edit / remove */}
           <Field label="Event Image">

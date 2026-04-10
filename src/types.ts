@@ -346,4 +346,6 @@ export interface UserAccount {
   earnedBadges: BadgeId[]
   /** whether this user has admin privileges */
   isAdmin?: boolean
+  /** whether this user wants live-event notifications for all events (not just reminded ones) */
+  notifyAllLive?: boolean
 }

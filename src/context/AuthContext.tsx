@@ -67,6 +67,8 @@ interface AuthState {
     username?: string
     avatarUrl?: string
   }) => Promise<{ ok: true } | { ok: false; error: string }>
+  /** Toggle global "notify me when any event goes live" preference */
+  toggleNotifyAllLive: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined)
@@ -160,6 +162,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     email: string
     avatar_url?: string | null
     is_admin?: boolean
+    notify_all_live?: boolean
   } | null>(null)
   const [socials, setSocials] = useState<SocialConnections>({})
   const [reminders, setReminders] = useState<string[]>([])
@@ -172,7 +175,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     // Try to load with avatar_url first
     let { data: prof, error: profError } = await sb
       .from('profiles')
-      .select('id, username, email, avatar_url, is_admin')
+      .select('id, username, email, avatar_url, is_admin, notify_all_live')
       .eq('id', uid)
       .maybeSingle()
 
@@ -184,7 +187,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
         .select('id, username, email')
         .eq('id', uid)
         .maybeSingle()
-      prof = fallbackProf ? { ...fallbackProf, avatar_url: null, is_admin: false } : null
+      prof = fallbackProf ? { ...fallbackProf, avatar_url: null, is_admin: false, notify_all_live: false } : null
     }
 
     const [{ data: socs }, { data: rems }, { data: attends }] = await Promise.all([
@@ -474,6 +477,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
       attendedEvents: attendedEvents,
       earnedBadges: badges,
       isAdmin: profile.is_admin || false,
+      notifyAllLive: profile.notify_all_live || false,
     }
   }, [session, profile, socials, reminders, attendedEvents, eventCategories])
 
@@ -506,6 +510,16 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     [attendedEvents],
   )
 
+  const toggleNotifyAllLive = useCallback(async () => {
+    if (!session?.user || !profile) return
+    const next = !(profile.notify_all_live || false)
+    await sb
+      .from('profiles')
+      .update({ notify_all_live: next })
+      .eq('id', session.user.id)
+    await refresh()
+  }, [sb, session, profile, refresh])
+
   const value: AuthState = {
     user,
     authUser: session?.user || null,
@@ -524,6 +538,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     hasAttended,
     refresh,
     updateProfile,
+    toggleNotifyAllLive,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
@@ -747,6 +762,10 @@ function DemoAuthProvider({ children }: { children: React.ReactNode }) {
     [user],
   )
 
+  const toggleNotifyAllLive = useCallback(async () => {
+    updateUser((u) => ({ ...u, notifyAllLive: !u.notifyAllLive }))
+  }, [updateUser])
+
   const value: AuthState = {
     user,
     authUser: null,
@@ -765,6 +784,7 @@ function DemoAuthProvider({ children }: { children: React.ReactNode }) {
     hasAttended,
     refresh: async () => {},
     updateProfile,
+    toggleNotifyAllLive,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

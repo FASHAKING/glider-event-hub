@@ -21,6 +21,7 @@ export interface Database {
           email: string
           avatar_url: string | null
           is_admin: boolean
+          notify_all_live: boolean
           created_at: string
         }
         Insert: {
@@ -29,6 +30,7 @@ export interface Database {
           email: string
           avatar_url?: string | null
           is_admin?: boolean
+          notify_all_live?: boolean
           created_at?: string
         }
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>

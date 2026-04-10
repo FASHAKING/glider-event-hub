@@ -6,6 +6,7 @@ export interface Comment {
   eventId: string
   userId: string
   username: string
+  avatarUrl?: string
   body: string
   createdAt: string
 }
@@ -36,6 +37,7 @@ export function useComments(
   eventId: string | null,
   currentUserId: string | null,
   currentUsername: string | null,
+  currentAvatarUrl?: string,
 ): UseCommentsResult {
   const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(false)
@@ -51,24 +53,43 @@ export function useComments(
 
     // ----- supabase mode ---------------------------------------------------
     setLoading(true)
+
+    // Try joining profiles for avatar_url
     const { data, error } = await supabase
       .from('comments')
-      .select('*')
+      .select('id, event_id, user_id, username, body, created_at, profiles(avatar_url)')
       .eq('event_id', eventId)
       .order('created_at', { ascending: true })
 
     if (error) {
-      console.warn('Failed to load comments:', error.message)
+      // Fallback without join if it fails
+      const { data: fallback } = await supabase
+        .from('comments')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: true })
+
+      setComments(
+        (fallback || []).map((row) => ({
+          id: row.id,
+          eventId: row.event_id,
+          userId: row.user_id,
+          username: row.username,
+          body: row.body,
+          createdAt: row.created_at,
+        })),
+      )
       setLoading(false)
       return
     }
 
     setComments(
-      (data || []).map((row) => ({
+      (data || []).map((row: any) => ({
         id: row.id,
         eventId: row.event_id,
         userId: row.user_id,
         username: row.username,
+        avatarUrl: row.profiles?.avatar_url ?? undefined,
         body: row.body,
         createdAt: row.created_at,
       })),
@@ -96,6 +117,7 @@ export function useComments(
           eventId,
           userId: currentUserId,
           username: currentUsername,
+          avatarUrl: currentAvatarUrl,
           body: trimmed,
           createdAt: new Date().toISOString(),
         }
@@ -116,7 +138,7 @@ export function useComments(
       await refresh()
       return { ok: true }
     },
-    [eventId, currentUserId, currentUsername, refresh],
+    [eventId, currentUserId, currentUsername, currentAvatarUrl, refresh],
   )
 
   return { comments, loading, postComment }

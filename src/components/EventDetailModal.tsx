@@ -71,6 +71,7 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
     event?.id || null,
     user?.id || null,
     user?.username || null,
+    user?.avatarUrl,
   )
 
   // re-render every second so the live countdown stays accurate
@@ -352,8 +353,12 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
                     comments.map((c) => (
                       <div key={c.id} className="bg-white/5 border border-white/5 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-2">
-                          <div className="w-7 h-7 rounded-full bg-glider-mint/20 border border-glider-mint/30 flex items-center justify-center text-xs font-bold text-glider-mint shrink-0">
-                            {c.username.charAt(0).toUpperCase()}
+                          <div className="w-7 h-7 rounded-full bg-glider-mint/20 border border-glider-mint/30 flex items-center justify-center text-xs font-bold text-glider-mint shrink-0 overflow-hidden">
+                            {c.avatarUrl ? (
+                              <img src={c.avatarUrl} alt={c.username} className="w-full h-full object-cover" />
+                            ) : (
+                              c.username.charAt(0).toUpperCase()
+                            )}
                           </div>
                           <span className="text-sm font-semibold text-white">{c.username}</span>
                           <span className="text-[11px] text-white/30 ml-auto shrink-0">

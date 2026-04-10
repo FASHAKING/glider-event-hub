@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { GliderEvent, EventStatus, EventAccent } from '../types'
+import { formatRecurrenceLabel } from '../types'
 import {
   CalendarIcon,
   UserIcon,
@@ -251,8 +252,8 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
             </div>
           )}
           {event.recurrence && event.recurrence.frequency !== 'none' && (
-            <div className="flex items-center gap-2 text-glider-olive dark:text-glider-mint text-xs">
-              ↻ Repeats {event.recurrence.frequency}
+            <div className="flex items-center gap-2 text-glider-olive dark:text-glider-mint text-xs capitalize">
+              ↻ {formatRecurrenceLabel(event.recurrence)}
             </div>
           )}
         </div>

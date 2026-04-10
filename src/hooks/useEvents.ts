@@ -39,6 +39,11 @@ function rowToEvent(row: EventRow): GliderEvent {
   }
 }
 
+/** Strip the `-rN` suffix from recurring instance IDs to get the real DB id */
+function baseEventId(id: string): string {
+  return id.replace(/-r\d+$/, '')
+}
+
 function loadLocalUserEvents(): GliderEvent[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -213,7 +218,8 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
   )
 
   const updateEvent = useCallback<UseEventsResult['updateEvent']>(
-    async (id, updates, imageFile) => {
+    async (rawId, updates, imageFile) => {
+      const id = baseEventId(rawId)
       // ----- demo mode --------------------------------------------------
       if (!isSupabaseConfigured || !supabase) {
         // For demo mode, if a new image file was provided, read it as base64
@@ -292,7 +298,8 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
   )
 
   const deleteEvent = useCallback<UseEventsResult['deleteEvent']>(
-    async (id) => {
+    async (rawId) => {
+      const id = baseEventId(rawId)
       // ----- demo mode --------------------------------------------------
       if (!isSupabaseConfigured || !supabase) {
         const local = loadLocalUserEvents().filter((e) => e.id !== id)
@@ -315,7 +322,8 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
   )
 
   const toggleFeatured = useCallback<UseEventsResult['toggleFeatured']>(
-    async (id, featured) => {
+    async (rawId, featured) => {
+      const id = baseEventId(rawId)
       // ----- demo mode --------------------------------------------------
       if (!isSupabaseConfigured || !supabase) {
         setEvents((prev) =>

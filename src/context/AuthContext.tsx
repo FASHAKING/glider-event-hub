@@ -159,6 +159,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     username: string
     email: string
     avatar_url?: string | null
+    is_admin?: boolean
   } | null>(null)
   const [socials, setSocials] = useState<SocialConnections>({})
   const [reminders, setReminders] = useState<string[]>([])
@@ -171,7 +172,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     // Try to load with avatar_url first
     let { data: prof, error: profError } = await sb
       .from('profiles')
-      .select('id, username, email, avatar_url')
+      .select('id, username, email, avatar_url, is_admin')
       .eq('id', uid)
       .maybeSingle()
 
@@ -183,7 +184,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
         .select('id, username, email')
         .eq('id', uid)
         .maybeSingle()
-      prof = fallbackProf ? { ...fallbackProf, avatar_url: null } : null
+      prof = fallbackProf ? { ...fallbackProf, avatar_url: null, is_admin: false } : null
     }
 
     const [{ data: socs }, { data: rems }, { data: attends }] = await Promise.all([
@@ -472,6 +473,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
       remindersFor: reminders,
       attendedEvents: attendedEvents,
       earnedBadges: badges,
+      isAdmin: profile.is_admin || false,
     }
   }, [session, profile, socials, reminders, attendedEvents, eventCategories])
 

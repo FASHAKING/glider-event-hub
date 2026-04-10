@@ -122,6 +122,12 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
             )}
             {badge.text}
           </span>
+          {event.isFeatured && (
+            <span className="absolute bottom-2 left-2 chip bg-amber-500/90 text-white border-transparent text-[10px] font-bold tracking-wide">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Featured
+            </span>
+          )}
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col">
@@ -210,6 +216,12 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
           <CatIcon width={11} height={11} className="text-glider-olive dark:text-glider-mint" />
           {event.category}
         </span>
+        {event.isFeatured && (
+          <span className="absolute bottom-2 left-3 chip bg-amber-500/90 text-white border-transparent text-[10px] font-bold tracking-wide shadow-sm">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Featured
+          </span>
+        )}
       </div>
 
       <div className="p-5 flex flex-col gap-3 flex-1">

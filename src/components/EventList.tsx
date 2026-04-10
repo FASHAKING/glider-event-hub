@@ -59,8 +59,13 @@ export default function EventList({ events, onOpenEvent }: EventListProps) {
         (e.tags || []).some((t) => t.toLowerCase().includes(q)),
       )
     }
-    // sort: live first, then upcoming asc, then past desc
+    // sort: featured first, then live → upcoming asc → past desc
     return [...list].sort((a, b) => {
+      // Featured events float to top
+      const af = a.event.isFeatured ? 0 : 1
+      const bf = b.event.isFeatured ? 0 : 1
+      if (af !== bf) return af - bf
+
       const order: Record<EventStatus, number> = { live: 0, upcoming: 1, past: 2 }
       if (order[a.status] !== order[b.status]) return order[a.status] - order[b.status]
       const at = new Date(a.event.startsAt).getTime()

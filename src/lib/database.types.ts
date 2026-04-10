@@ -20,6 +20,7 @@ export interface Database {
           username: string
           email: string
           avatar_url: string | null
+          is_admin: boolean
           created_at: string
         }
         Insert: {
@@ -27,6 +28,7 @@ export interface Database {
           username: string
           email: string
           avatar_url?: string | null
+          is_admin?: boolean
           created_at?: string
         }
         Update: Partial<Database['public']['Tables']['profiles']['Insert']>
@@ -50,6 +52,7 @@ export interface Database {
           recurrence_freq: string | null
           recurrence_count: number | null
           created_by: string | null
+          is_featured: boolean
           created_at: string
           updated_at: string
         }
@@ -70,6 +73,7 @@ export interface Database {
           recurrence_freq?: string | null
           recurrence_count?: number | null
           created_by?: string | null
+          is_featured?: boolean
           created_at?: string
           updated_at?: string
         }

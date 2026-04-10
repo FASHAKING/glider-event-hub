@@ -7,6 +7,7 @@ import CalendarPage from './components/CalendarPage'
 import LeaderboardPage from './components/LeaderboardPage'
 import SubmitEventModal from './components/SubmitEventModal'
 import EventDetailModal from './components/EventDetailModal'
+import EditEventModal from './components/EditEventModal'
 import AuthModal from './components/AuthModal'
 import ProfileModal from './components/ProfileModal'
 import SuggestionModal from './components/SuggestionModal'
@@ -29,7 +30,7 @@ export type AppView = 'home' | 'calendar' | 'leaderboard'
 
 function AppInner() {
   const { user } = useAuth()
-  const { events, submitEvent } = useEvents(user?.id || null)
+  const { events, submitEvent, updateEvent, deleteEvent, toggleFeatured } = useEvents(user?.id || null)
   const [view, setView] = useState<AppView>('home')
   const [submitOpen, setSubmitOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
@@ -37,6 +38,7 @@ function AppInner() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [suggestionOpen, setSuggestionOpen] = useState(false)
   const [activeEvent, setActiveEvent] = useState<GliderEvent | null>(null)
+  const [editingEvent, setEditingEvent] = useState<GliderEvent | null>(null)
   const [, forceTick] = useState(0)
 
   // Scroll back to the top when switching top-level views.
@@ -159,6 +161,33 @@ function AppInner() {
         event={activeEvent}
         onClose={() => setActiveEvent(null)}
         onRequireAuth={() => openAuth('signup')}
+        onEditEvent={(ev) => {
+          setActiveEvent(null)
+          setEditingEvent(ev)
+        }}
+        onDeleteEvent={async (id) => {
+          await deleteEvent(id)
+          setActiveEvent(null)
+        }}
+        onToggleFeatured={async (id, featured) => {
+          await toggleFeatured(id, featured)
+          // Update the active event so the UI reflects the change immediately
+          setActiveEvent((prev) =>
+            prev && prev.id === id ? { ...prev, isFeatured: featured } : prev,
+          )
+        }}
+      />
+
+      <EditEventModal
+        event={editingEvent}
+        onClose={() => setEditingEvent(null)}
+        onSave={async (id, updates, imageFile) => {
+          const result = await updateEvent(id, updates, imageFile ?? undefined)
+          if (result.ok) {
+            setEditingEvent(null)
+          }
+          return result
+        }}
       />
 
       <AuthModal

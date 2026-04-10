@@ -21,6 +21,9 @@ interface Props {
   event: GliderEvent | null
   onClose: () => void
   onRequireAuth: () => void
+  onEditEvent?: (event: GliderEvent) => void
+  onDeleteEvent?: (id: string) => void
+  onToggleFeatured?: (id: string, featured: boolean) => void
 }
 
 const accentGradients: Record<EventAccent, string> = {
@@ -60,10 +63,11 @@ function formatCommentTime(iso: string) {
   return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 }
 
-export default function EventDetailModal({ event, onClose, onRequireAuth }: Props) {
+export default function EventDetailModal({ event, onClose, onRequireAuth, onEditEvent, onDeleteEvent, onToggleFeatured }: Props) {
   const { user, toggleAttendance, hasAttended } = useAuth()
   const [tick, setTick] = useState(0)
   const [imgFailed, setImgFailed] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [commentText, setCommentText] = useState('')
   const [posting, setPosting] = useState(false)
   const [commentError, setCommentError] = useState<string | null>(null)
@@ -130,15 +134,15 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
       >
         <div className="flex flex-col md:flex-row bg-[#111111] border border-white/10 rounded-3xl overflow-hidden shadow-2xl relative">
           
-          <div className={`relative w-full md:w-[55%] h-64 md:h-[400px] bg-gradient-to-br ${accentGradients[accent]}`}>
+          <div className={`relative w-full md:w-[55%] ${event.imageUrl && !imgFailed ? 'min-h-[16rem] md:min-h-[400px] bg-black' : 'h-64 md:h-[400px] bg-gradient-to-br ' + accentGradients[accent]}`}>
             {event.imageUrl && !imgFailed ? (
-              <img src={event.imageUrl} alt="" className="absolute inset-0 w-full h-full object-cover mix-blend-overlay opacity-80" onError={() => setImgFailed(true)} />
+              <img src={event.imageUrl} alt="" className="w-full h-full object-contain" onError={() => setImgFailed(true)} />
             ) : (
                 <div className="absolute inset-0 flex items-center justify-center mix-blend-overlay opacity-30">
                   <CatIcon width={200} height={200} />
                 </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/40 to-transparent p-8 flex flex-col justify-center">
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/30 to-transparent p-8 flex flex-col justify-center">
               <span className={`inline-flex items-center gap-2 self-start rounded-full px-3 py-1 text-[11px] font-bold tracking-wider uppercase ${status === 'live' ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]' : status === 'past' ? 'bg-white/20 text-white' : 'bg-glider-mint text-black'}`}>
                 {status === 'live' && <LiveDotIcon width={8} height={8} className="animate-pulse" />}
                 {statusLabel(status)}
@@ -176,9 +180,70 @@ export default function EventDetailModal({ event, onClose, onRequireAuth }: Prop
           </div>
         </div>
 
+        {/* Admin controls */}
+        {user?.isAdmin && (
+          <div className="flex items-center gap-3 bg-[#111111] border border-white/10 rounded-2xl px-5 py-3">
+            <span className="text-[10px] uppercase tracking-widest text-amber-400 font-bold mr-auto flex items-center gap-1.5">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 15v2"/><path d="M12 11a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M17.8 19.817l-2.172 1.138a.392.392 0 0 1-.568-.41l.415-2.411-1.757-1.707a.389.389 0 0 1 .217-.665l2.428-.352L17.45 13.3a.392.392 0 0 1 .7 0l1.086 2.11 2.428.352a.389.389 0 0 1 .217.665l-1.757 1.707.415 2.41a.392.392 0 0 1-.568.41L17.8 19.818z"/><rect width="18" height="18" x="3" y="3" rx="2"/></svg>
+              Admin
+            </span>
+            <button
+              type="button"
+              onClick={() => onEditEvent?.(event)}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/70 hover:bg-white/10 hover:text-white text-xs font-semibold transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleFeatured?.(event.id, !event.isFeatured)}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg border text-xs font-semibold transition-colors ${
+                event.isFeatured
+                  ? 'bg-amber-500/20 border-amber-500/30 text-amber-400 hover:bg-amber-500/30'
+                  : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              <svg width="13" height="13" viewBox="0 0 24 24" fill={event.isFeatured ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              {event.isFeatured ? 'Unpin' : 'Pin'}
+            </button>
+            {!confirmDelete ? (
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white/5 border border-white/10 text-red-400 hover:bg-red-500/10 hover:border-red-500/30 text-xs font-semibold transition-colors"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                Delete
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-400">Sure?</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDeleteEvent?.(event.id)
+                    onClose()
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-red-500 text-white text-xs font-bold hover:bg-red-600 transition-colors"
+                >
+                  Yes, delete
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(false)}
+                  className="px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/70 text-xs font-semibold hover:bg-white/10 transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="w-full lg:w-[65%] flex flex-col gap-6">
-            
+
             <div className="bg-[#111111] border border-white/5 rounded-3xl p-6 sm:p-8 shadow-card">
               <div className="flex flex-wrap gap-2 mb-6">
                  {event.tags && event.tags.map((t) => (

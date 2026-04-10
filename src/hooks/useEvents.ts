@@ -28,6 +28,7 @@ function rowToEvent(row: EventRow): GliderEvent {
     tags: row.tags || [],
     accent: (row.accent as EventAccent) || 'mint',
     imageUrl: row.image_url || undefined,
+    isFeatured: (row as any).is_featured || false,
     recurrence:
       row.recurrence_freq && row.recurrence_freq !== 'none'
         ? {
@@ -36,6 +37,11 @@ function rowToEvent(row: EventRow): GliderEvent {
           }
         : undefined,
   }
+}
+
+/** Strip the `-rN` suffix from recurring instance IDs to get the real DB id */
+function baseEventId(id: string): string {
+  return id.replace(/-r\d+$/, '')
 }
 
 function loadLocalUserEvents(): GliderEvent[] {
@@ -54,10 +60,16 @@ interface UseEventsResult {
   events: GliderEvent[]
   loading: boolean
   error: string | null
-  /** Submit a new event. In Supabase mode, uploads the image to Storage. */
   submitEvent: (
     e: Omit<GliderEvent, 'id'> & { imageFile?: File | null },
   ) => Promise<{ ok: true; event: GliderEvent } | { ok: false; error: string }>
+  updateEvent: (
+    id: string,
+    updates: Partial<Omit<GliderEvent, 'id'>>,
+    imageFile?: File | null,
+  ) => Promise<{ ok: true } | { ok: false; error: string }>
+  deleteEvent: (id: string) => Promise<{ ok: true } | { ok: false; error: string }>
+  toggleFeatured: (id: string, featured: boolean) => Promise<{ ok: true } | { ok: false; error: string }>
   refresh: () => Promise<void>
 }
 
@@ -205,5 +217,135 @@ export function useEvents(currentUserId: string | null): UseEventsResult {
     [currentUserId],
   )
 
-  return { events, loading, error, submitEvent, refresh }
+  const updateEvent = useCallback<UseEventsResult['updateEvent']>(
+    async (rawId, updates, imageFile) => {
+      const id = baseEventId(rawId)
+      // ----- demo mode --------------------------------------------------
+      if (!isSupabaseConfigured || !supabase) {
+        // For demo mode, if a new image file was provided, read it as base64
+        if (imageFile) {
+          const dataUrl = await new Promise<string>((resolve) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(reader.result as string)
+            reader.readAsDataURL(imageFile)
+          })
+          updates = { ...updates, imageUrl: dataUrl }
+        }
+        const local = loadLocalUserEvents()
+        const idx = local.findIndex((e) => e.id === id)
+        if (idx >= 0) {
+          local[idx] = { ...local[idx], ...updates }
+          saveLocalUserEvents(local)
+          setEvents([...sampleEvents, ...local])
+        } else {
+          setEvents((prev) =>
+            prev.map((e) => (e.id === id ? { ...e, ...updates } : e)),
+          )
+        }
+        return { ok: true }
+      }
+
+      // ----- supabase mode ---------------------------------------------
+      // Handle image upload if a new file was provided
+      if (imageFile && currentUserId) {
+        const path = `${currentUserId}/${Date.now()}-${imageFile.name}`
+        const { error: storageErr } = await supabase.storage
+          .from(EVENT_BUCKET)
+          .upload(path, imageFile, {
+            cacheControl: '3600',
+            upsert: false,
+            contentType: imageFile.type,
+          })
+        if (storageErr) {
+          console.warn('Image upload failed during edit:', storageErr.message)
+        } else {
+          const { data: publicUrlData } = supabase.storage
+            .from(EVENT_BUCKET)
+            .getPublicUrl(path)
+          updates = { ...updates, imageUrl: publicUrlData.publicUrl }
+        }
+      }
+
+      const patch: Database['public']['Tables']['events']['Update'] = {}
+      if (updates.title !== undefined) patch.title = updates.title
+      if (updates.description !== undefined) patch.description = updates.description
+      if (updates.host !== undefined) patch.host = updates.host
+      if (updates.hosts !== undefined) patch.hosts = updates.hosts
+      if (updates.category !== undefined) patch.category = updates.category
+      if (updates.startsAt !== undefined) patch.starts_at = updates.startsAt
+      if (updates.durationMinutes !== undefined) patch.duration_minutes = updates.durationMinutes
+      if (updates.link !== undefined) patch.link = updates.link
+      if (updates.location !== undefined) patch.location = updates.location || null
+      if (updates.tags !== undefined) patch.tags = updates.tags
+      if (updates.accent !== undefined) patch.accent = updates.accent
+      if (updates.imageUrl !== undefined) patch.image_url = updates.imageUrl || null
+      if (updates.recurrence !== undefined) {
+        patch.recurrence_freq = updates.recurrence?.frequency || null
+        patch.recurrence_count = updates.recurrence?.occurrences || null
+      }
+      if (updates.isFeatured !== undefined) patch.is_featured = updates.isFeatured
+
+      const { error: upErr } = await supabase
+        .from('events')
+        .update(patch)
+        .eq('id', id)
+      if (upErr) return { ok: false, error: upErr.message }
+
+      await refresh()
+      return { ok: true }
+    },
+    [refresh, currentUserId],
+  )
+
+  const deleteEvent = useCallback<UseEventsResult['deleteEvent']>(
+    async (rawId) => {
+      const id = baseEventId(rawId)
+      // ----- demo mode --------------------------------------------------
+      if (!isSupabaseConfigured || !supabase) {
+        const local = loadLocalUserEvents().filter((e) => e.id !== id)
+        saveLocalUserEvents(local)
+        setEvents([...sampleEvents, ...local])
+        return { ok: true }
+      }
+
+      // ----- supabase mode ---------------------------------------------
+      const { error: delErr } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', id)
+      if (delErr) return { ok: false, error: delErr.message }
+
+      setEvents((prev) => prev.filter((e) => e.id !== id))
+      return { ok: true }
+    },
+    [],
+  )
+
+  const toggleFeatured = useCallback<UseEventsResult['toggleFeatured']>(
+    async (rawId, featured) => {
+      const id = baseEventId(rawId)
+      // ----- demo mode --------------------------------------------------
+      if (!isSupabaseConfigured || !supabase) {
+        setEvents((prev) =>
+          prev.map((e) => (e.id === id ? { ...e, isFeatured: featured } : e)),
+        )
+        return { ok: true }
+      }
+
+      // ----- supabase mode ---------------------------------------------
+      const { error: upErr } = await supabase
+        .from('events')
+        .update({ is_featured: featured })
+        .eq('id', id)
+      if (upErr) return { ok: false, error: upErr.message }
+
+      setEvents((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, isFeatured: featured } : e)),
+      )
+      return { ok: true }
+    },
+    [],
+  )
+
+  return { events, loading, error, submitEvent, updateEvent, deleteEvent, toggleFeatured, refresh }
 }

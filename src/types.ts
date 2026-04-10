@@ -53,6 +53,8 @@ export interface GliderEvent {
   imageUrl?: string
   /** Optional recurrence definition – used to generate occurrences for the calendar */
   recurrence?: EventRecurrence
+  /** Whether this event is pinned/featured at the top */
+  isFeatured?: boolean
 }
 
 export type EventStatus = 'live' | 'upcoming' | 'past'
@@ -194,4 +196,6 @@ export interface UserAccount {
   attendedEvents: string[]
   /** badge ids the user has earned */
   earnedBadges: BadgeId[]
+  /** whether this user has admin privileges */
+  isAdmin?: boolean
 }

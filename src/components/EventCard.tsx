@@ -98,13 +98,13 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
         className="card p-4 flex flex-col sm:flex-row gap-4 hover:border-glider-olive/30 dark:hover:border-glider-mint/30 transform-gpu hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-[0_8px_30px_rgba(168,224,209,0.12)] transition-all cursor-pointer group"
       >
         <div
-          className={`relative shrink-0 sm:w-44 h-28 rounded-xl overflow-hidden bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center`}
+          className={`relative shrink-0 sm:w-44 ${showImage ? 'aspect-video bg-black/90' : 'h-28 bg-gradient-to-br ' + accentGradients[accent]} rounded-xl overflow-hidden flex items-center justify-center`}
         >
           {showImage ? (
             <img
               src={event.imageUrl}
               alt=""
-              className="absolute inset-0 w-full h-full object-cover"
+              className="w-full h-full object-contain"
               onError={() => setImgFailed(true)}
             />
           ) : (
@@ -122,6 +122,12 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
             )}
             {badge.text}
           </span>
+          {event.isFeatured && (
+            <span className="absolute bottom-2 left-2 chip bg-amber-500/90 text-white border-transparent text-[10px] font-bold tracking-wide">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+              Featured
+            </span>
+          )}
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col">
@@ -182,13 +188,13 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
       className="card overflow-hidden flex flex-col hover:border-glider-olive/30 dark:hover:border-glider-mint/30 transform-gpu hover:-translate-y-1 hover:shadow-lg dark:hover:shadow-[0_8px_30px_rgba(168,224,209,0.12)] transition-all duration-300 group cursor-pointer"
     >
       <div
-        className={`relative h-36 bg-gradient-to-br ${accentGradients[accent]} flex items-center justify-center overflow-hidden`}
+        className={`relative ${showImage ? 'aspect-[16/9] bg-black/90' : 'h-36 bg-gradient-to-br ' + accentGradients[accent]} flex items-center justify-center overflow-hidden`}
       >
         {showImage ? (
           <img
             src={event.imageUrl}
             alt=""
-            className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
             onError={() => setImgFailed(true)}
           />
         ) : (
@@ -210,6 +216,12 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
           <CatIcon width={11} height={11} className="text-glider-olive dark:text-glider-mint" />
           {event.category}
         </span>
+        {event.isFeatured && (
+          <span className="absolute bottom-2 left-3 chip bg-amber-500/90 text-white border-transparent text-[10px] font-bold tracking-wide shadow-sm">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            Featured
+          </span>
+        )}
       </div>
 
       <div className="p-5 flex flex-col gap-3 flex-1">

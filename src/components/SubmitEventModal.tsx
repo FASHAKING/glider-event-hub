@@ -13,6 +13,8 @@ interface Props {
   onSubmit: (
     e: SubmitEventPayload,
   ) => Promise<{ ok: true } | { ok: false; error: string }> | void
+  /** Optional: called from the success screen to jump to the user's submissions */
+  onViewSubmissions?: () => void
 }
 
 // Suggestions only — both fields are free-text, so submitters can type
@@ -51,7 +53,7 @@ const ORDINAL_OPTIONS = [
 
 const MAX_IMAGE_BYTES = 1.5 * 1024 * 1024 // 1.5 MB
 
-export default function SubmitEventModal({ open, onClose, isAdmin, onSubmit }: Props) {
+export default function SubmitEventModal({ open, onClose, isAdmin, onSubmit, onViewSubmissions }: Props) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [hostsCsv, setHostsCsv] = useState('')
@@ -201,13 +203,27 @@ export default function SubmitEventModal({ open, onClose, isAdmin, onSubmit }: P
           <p className="text-sm text-glider-gray dark:text-glider-darkMuted">
             Your event has been submitted and is awaiting admin approval. Once approved, it will appear on the hub for everyone to see.
           </p>
-          <button
-            type="button"
-            onClick={() => { reset(); onClose() }}
-            className="btn-primary text-sm mx-auto"
-          >
-            Got it
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {onViewSubmissions && (
+              <button
+                type="button"
+                onClick={() => {
+                  reset()
+                  onViewSubmissions()
+                }}
+                className="btn-primary text-sm"
+              >
+                View your submissions
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => { reset(); onClose() }}
+              className={onViewSubmissions ? 'btn-ghost text-sm' : 'btn-primary text-sm mx-auto'}
+            >
+              Got it
+            </button>
+          </div>
         </div>
       </div>
     )

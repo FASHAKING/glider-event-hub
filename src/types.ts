@@ -61,6 +61,8 @@ export interface GliderEvent {
   isFeatured?: boolean
   /** Approval status: pending submissions await admin review */
   status?: 'pending' | 'approved' | 'rejected'
+  /** User id of the submitter; undefined for seed/sample events */
+  createdBy?: string
 }
 
 export type EventStatus = 'live' | 'upcoming' | 'past'

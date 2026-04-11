@@ -30,6 +30,7 @@ function rowToEvent(row: EventRow): GliderEvent {
     imageUrl: row.image_url || undefined,
     isFeatured: (row as any).is_featured || false,
     status: (row.status as 'pending' | 'approved' | 'rejected') || 'approved',
+    createdBy: row.created_by || undefined,
     recurrence:
       row.recurrence_freq && row.recurrence_freq !== 'none'
         ? {
@@ -138,6 +139,7 @@ export function useEvents(currentUserId: string | null, isAdmin = false): UseEve
           ...input,
           id: `user-${Date.now()}`,
           status: isAdmin ? 'approved' : 'pending',
+          createdBy: currentUserId || 'local',
         }
         const next = [...loadLocalUserEvents(), newEvent]
         saveLocalUserEvents(next)
@@ -432,7 +434,9 @@ export function useEvents(currentUserId: string | null, isAdmin = false): UseEve
         .update({ status: 'rejected' })
         .eq('id', id)
       if (upErr) return { ok: false, error: upErr.message }
-      setEvents((prev) => prev.filter((e) => e.id !== id))
+      setEvents((prev) =>
+        prev.map((e) => (e.id === id ? { ...e, status: 'rejected' } : e)),
+      )
       return { ok: true }
     },
     [],

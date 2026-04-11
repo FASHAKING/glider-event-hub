@@ -33,6 +33,9 @@ function AppInner() {
   const isAdmin = user?.isAdmin || false
   const { events, submitEvent, updateEvent, deleteEvent, toggleFeatured, approveEvent, rejectEvent } = useEvents(user?.id || null, isAdmin)
   const [view, setView] = useState<AppView>('home')
+  const [listTab, setListTab] = useState<
+    'all' | 'upcoming' | 'live' | 'past' | 'pending' | 'mine'
+  >('all')
   const [submitOpen, setSubmitOpen] = useState(false)
   const [authOpen, setAuthOpen] = useState(false)
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin')
@@ -63,6 +66,19 @@ function AppInner() {
     () => allEvents.filter((e) => e.status !== 'pending' && e.status !== 'rejected'),
     [allEvents],
   )
+
+  // Events visible in the main EventList. Admins see everything; signed-in
+  // users additionally see their own pending/rejected submissions so they can
+  // track approval state.
+  const visibleToUserEvents = useMemo(() => {
+    if (isAdmin) return allEvents
+    if (!user?.id) return approvedEvents
+    return allEvents.filter(
+      (e) =>
+        (e.status !== 'pending' && e.status !== 'rejected') ||
+        e.createdBy === user.id,
+    )
+  }, [allEvents, approvedEvents, isAdmin, user?.id])
 
   const liveEvent = approvedEvents.find((e) => getEventStatus(e) === 'live')
 
@@ -121,7 +137,14 @@ function AppInner() {
                 setSubmitOpen(true)
               }}
             />
-            <EventList events={isAdmin ? allEvents : approvedEvents} onOpenEvent={setActiveEvent} isAdmin={isAdmin} />
+            <EventList
+              events={visibleToUserEvents}
+              onOpenEvent={setActiveEvent}
+              isAdmin={isAdmin}
+              currentUserId={user?.id || null}
+              tab={listTab}
+              onTabChange={setListTab}
+            />
           </>
         ) : view === 'calendar' ? (
           <CalendarPage
@@ -150,6 +173,11 @@ function AppInner() {
             return { ok: true as const }
           }
           return { ok: false as const, error: result.error }
+        }}
+        onViewSubmissions={() => {
+          setSubmitOpen(false)
+          setView('home')
+          setListTab('mine')
         }}
       />
 

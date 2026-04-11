@@ -134,6 +134,11 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
               Pending Review
             </span>
           )}
+          {event.status === 'rejected' && (
+            <span className="absolute bottom-2 right-2 chip bg-red-500/90 text-white border-transparent text-[10px] font-bold tracking-wide">
+              Rejected
+            </span>
+          )}
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col">
@@ -231,6 +236,11 @@ export default function EventCard({ event, status, layout = 'grid', onOpen }: Pr
         {event.status === 'pending' && (
           <span className="absolute bottom-2 right-3 chip bg-orange-500/90 text-white border-transparent text-[10px] font-bold tracking-wide shadow-sm">
             Pending Review
+          </span>
+        )}
+        {event.status === 'rejected' && (
+          <span className="absolute bottom-2 right-3 chip bg-red-500/90 text-white border-transparent text-[10px] font-bold tracking-wide shadow-sm">
+            Rejected
           </span>
         )}
       </div>

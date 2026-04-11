@@ -4,7 +4,12 @@ import { getEventStatus } from '../types'
 import EventCard from './EventCard'
 import { SearchIcon, GridIcon, ListIcon, ChevronDownIcon } from './Icons'
 
-type Tab = 'all' | EventStatus | 'pending'
+type Tab = 'all' | EventStatus | 'pending' | 'mine'
+
+/** Strip the `-rN` suffix from a recurring instance id to get the base id */
+function baseId(id: string): string {
+  return id.replace(/-r\d+$/, '')
+}
 
 const baseTabs: { key: Tab; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -26,19 +31,37 @@ interface EventListProps {
   events: GliderEvent[]
   onOpenEvent: (event: GliderEvent) => void
   isAdmin?: boolean
+  currentUserId?: string | null
+  /** Controlled tab. When provided, `onTabChange` must also be set. */
+  tab?: Tab
+  onTabChange?: (t: Tab) => void
 }
 
-export default function EventList({ events, onOpenEvent, isAdmin }: EventListProps) {
-  const [tab, setTab] = useState<Tab>('all')
+export default function EventList({
+  events,
+  onOpenEvent,
+  isAdmin,
+  currentUserId,
+  tab: tabProp,
+  onTabChange,
+}: EventListProps) {
+  const [localTab, setLocalTab] = useState<Tab>('all')
+  const tab = tabProp ?? localTab
+  const setTab = (t: Tab) => {
+    if (onTabChange) onTabChange(t)
+    else setLocalTab(t)
+  }
   const [query, setQuery] = useState('')
   const [view, setView] = useState<'grid' | 'list'>('grid')
   const [category, setCategory] = useState<EventCategory | 'All'>('All')
   const [catOpen, setCatOpen] = useState(false)
 
   const tabs = useMemo(() => {
-    if (isAdmin) return [...baseTabs, { key: 'pending' as Tab, label: 'Pending' }]
-    return baseTabs
-  }, [isAdmin])
+    const result = [...baseTabs]
+    if (currentUserId) result.push({ key: 'mine' as Tab, label: 'My Events' })
+    if (isAdmin) result.push({ key: 'pending' as Tab, label: 'Pending' })
+    return result
+  }, [isAdmin, currentUserId])
 
   const withStatus = useMemo(
     () => events.map((e) => ({ event: e, status: getEventStatus(e) })),
@@ -50,22 +73,52 @@ export default function EventList({ events, onOpenEvent, isAdmin }: EventListPro
     [events],
   )
 
+  const mineCount = useMemo(
+    () =>
+      currentUserId
+        ? new Set(
+            events
+              .filter((e) => e.createdBy === currentUserId)
+              .map((e) => baseId(e.id)),
+          ).size
+        : 0,
+    [events, currentUserId],
+  )
+
   const counts = useMemo(() => {
     // For non-admins, count only approved events
     const approved = withStatus.filter((x) => x.event.status !== 'pending' && x.event.status !== 'rejected')
-    const c: Record<Tab, number> = { all: approved.length, live: 0, upcoming: 0, past: 0, pending: pendingCount }
+    const c: Record<Tab, number> = {
+      all: approved.length,
+      live: 0,
+      upcoming: 0,
+      past: 0,
+      pending: pendingCount,
+      mine: mineCount,
+    }
     for (const { status, event } of withStatus) {
       if (event.status === 'pending' || event.status === 'rejected') continue
       c[status]++
     }
     return c
-  }, [withStatus, pendingCount])
+  }, [withStatus, pendingCount, mineCount])
 
   const visible = useMemo(() => {
     let list = withStatus
     // "Pending" tab shows only pending events
     if (tab === 'pending') {
       list = list.filter((x) => x.event.status === 'pending')
+    } else if (tab === 'mine') {
+      // "My Events" shows all of the signed-in user's submissions,
+      // deduped so recurring occurrences collapse to a single row.
+      list = list.filter((x) => !!currentUserId && x.event.createdBy === currentUserId)
+      const seen = new Set<string>()
+      list = list.filter((x) => {
+        const bid = baseId(x.event.id)
+        if (seen.has(bid)) return false
+        seen.add(bid)
+        return true
+      })
     } else {
       // Non-pending tabs exclude pending/rejected events
       list = list.filter((x) => x.event.status !== 'pending' && x.event.status !== 'rejected')
@@ -214,9 +267,13 @@ export default function EventList({ events, onOpenEvent, isAdmin }: EventListPro
 
       {visible.length === 0 ? (
         <div className="card p-12 text-center">
-          <p className="text-glider-black dark:text-glider-darkText font-medium">No events found</p>
+          <p className="text-glider-black dark:text-glider-darkText font-medium">
+            {tab === 'mine' ? "You haven't submitted any events yet" : 'No events found'}
+          </p>
           <p className="text-glider-gray dark:text-glider-darkMuted text-sm mt-1">
-            Try a different filter or check back soon.
+            {tab === 'mine'
+              ? 'Submit an event and track its approval status here.'
+              : 'Try a different filter or check back soon.'}
           </p>
         </div>
       ) : view === 'grid' ? (
